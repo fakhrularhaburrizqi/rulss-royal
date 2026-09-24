@@ -1,15 +1,188 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id        String    @id @default(cuid())
+  name      String
+  code      String    @unique
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  outlets      Outlet[]
+  users        User[]
+  roles        Role[]
+  activityLogs ActivityLog[]
+}
+
+model Outlet {
+  id        String    @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  address   String?
+  phone     String?
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  setting      OutletSetting?
+  diningTables DiningTable[]
+  userOutlets  UserOutlet[]
+  activityLogs ActivityLog[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+}
+
+model OutletSetting {
+  id             String   @id @default(cuid())
+  outletId       String   @unique
+  taxPercent     Decimal  @default(10.00) @db.Decimal(5, 2)
+  servicePercent Decimal  @default(0.00) @db.Decimal(5, 2)
+  rounding       Int      @default(100)
+  timezone       String   @default("Asia/Jakarta")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String?
+  pinHash      String?
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userRoles    UserRole[]
+  userOutlets  UserOutlet[]
+  activityLogs ActivityLog[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, email])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  module      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [tenantId, userId], references: [tenantId, id], onDelete: Cascade)
+  role Role @relation(fields: [tenantId, roleId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, roleId])
+  @@index([tenantId, roleId])
+}
+
+model UserOutlet {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  outletId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [tenantId, userId], references: [tenantId, id], onDelete: Cascade)
+  outlet Outlet @relation(fields: [tenantId, outletId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, outletId])
+  @@index([tenantId, outletId])
+}
+
+model DiningTable {
+  id          String   @id @default(cuid())
+  outletId    String
+  code        String
+  capacity    Int      @default(4)
+  qrTokenHash String?  @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Restrict)
+
+  @@unique([outletId, code])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  outletId  String?
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  outlet Outlet? @relation(fields: [tenantId, outletId], references: [tenantId, id], onDelete: Restrict)
+  user   User?   @relation(fields: [tenantId, userId], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, outletId, createdAt])
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, entity, entityId, createdAt])
 }

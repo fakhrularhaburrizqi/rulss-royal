@@ -1,0 +1,12 @@
+node_modules
+.next
+.output
+dist
+coverage
+.env*
+!.env.example
+*.log
+.DS_Store
+README.md
+pnpm-workspace.yaml
+pnpm-lock.yaml
