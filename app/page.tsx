@@ -1,65 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 
-type MenuItem = {
-  id: string;
-  nama: string;
-  keterangan: string;
-  harga: number;
-  image: string;
-  imageAlt: string;
-};
-
-const MENU_WARUNGKU: MenuItem[] = [
-  {
-    id: "nasi-goreng-spesial",
-    nama: "Nasi Goreng Spesial",
-    keterangan: "Nasi goreng telur, ayam suwir, dan acar.",
-    harga: 18000,
-    image: "/images/menu/nasi-goreng.jpg",
-    imageAlt: "Nasi goreng spesial dengan telur mata sapi dan kerupuk",
-  },
-  {
-    id: "mie-ayam-warungku",
-    nama: "Mie Ayam Warungku",
-    keterangan: "Mie ayam kuah gurih dengan bawang goreng.",
-    harga: 15000,
-    image: "/images/menu/mie-ayam.jpg",
-    imageAlt: "Semangkuk mie ayam dengan sayuran dan pangsit",
-  },
-  {
-    id: "ayam-geprek-sambal",
-    nama: "Ayam Geprek Sambal",
-    keterangan: "Ayam krispi digeprek dengan sambal segar.",
-    harga: 20000,
-    image: "/images/menu/ayam-geprek.jpg",
-    imageAlt: "Ayam geprek sambal dengan nasi, tahu, dan lalapan",
-  },
-  {
-    id: "es-teh-manis",
-    nama: "Es Teh Manis",
-    keterangan: "Teh melati dingin, manisnya pas.",
-    harga: 5000,
-    image: "/images/menu/es-teh-manis.jpg",
-    imageAlt: "Segelas es teh manis dingin",
-  },
-  {
-    id: "kopi-susu-gula-aren",
-    nama: "Kopi Susu Gula Aren",
-    keterangan: "Espresso, susu segar, dan gula aren cair.",
-    harga: 12000,
-    image: "/images/menu/kopi-susu-gula-aren.jpg",
-    imageAlt: "Es kopi susu gula aren dalam gelas",
-  },
-  {
-    id: "pisang-goreng-crispy",
-    nama: "Pisang Goreng Crispy",
-    keterangan: "Pisang hangat dengan lapisan renyah.",
-    harga: 10000,
-    image: "/images/menu/pisang-goreng.jpg",
-    imageAlt: "Pisang goreng dengan keju dan meses cokelat",
-  },
-];
+import { MenuOrderDemo } from "./components/menu-order-demo";
 
 const KEUNGGULAN_WARUNG = [
   {
@@ -145,10 +86,6 @@ const tautanNav = [
   "transition-colors hover:text-emerald-700",
   fokus,
 ].join(" ");
-
-function formatRupiah(nilai: number): string {
-  return `Rp${nilai.toLocaleString("id-ID")}`;
-}
 
 export default function Home() {
   return (
@@ -289,64 +226,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section
-          id="menu"
-          aria-labelledby="judul-menu"
-          className="scroll-mt-24 bg-[#FDFAF4] text-emerald-950"
-        >
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 id="judul-menu" className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Menu Warungku
-                </h2>
-                <p className="mt-2 max-w-xl text-base leading-relaxed text-emerald-900/80">
-                  Enam menu contoh untuk demo ini, harganya dalam rupiah.
-                </p>
-              </div>
-              <p className="text-sm text-emerald-900/80 sm:max-w-[15rem] sm:text-right">
-                Tombol Tambah hanya tampilan pada demo ini.
-              </p>
-            </div>
-
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {MENU_WARUNGKU.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-emerald-900/10 bg-white shadow-sm"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-emerald-50">
-                    <Image
-                      src={item.image}
-                      alt={item.imageAlt}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-base font-semibold text-emerald-950">{item.nama}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-emerald-900/80">
-                      {item.keterangan}
-                    </p>
-                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-emerald-900/10 pt-4">
-                      <span className="text-lg font-bold text-emerald-950">
-                        {formatRupiah(item.harga)}
-                      </span>
-                      {/* TODO demo: tombol Tambah hanya tampilan, belum terhubung ke keranjang */}
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none inline-flex min-h-11 items-center rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white select-none"
-                      >
-                        Tambah
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <MenuOrderDemo />
 
         <section
           id="cara-pesan"
