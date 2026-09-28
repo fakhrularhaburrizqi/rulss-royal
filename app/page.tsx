@@ -295,13 +295,16 @@ export default function Home() {
             <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/80">
               Buka menu contoh untuk melihat alurnya, atau masuk ke dashboard warung.
             </p>
-            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
               <a href="#menu" className={tombolAmber}>
                 Lihat Menu
               </a>
               <a href="/login" className={tombolGelap}>
                 Masuk Dashboard
               </a>
+              <Link href="/demo/operasional" className={tombolGaris}>
+                Lihat Demo Kasir &amp; Dapur
+              </Link>
             </div>
           </div>
         </section>
