@@ -1,8 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+
+import { addDemoOrder } from "@/lib/demo-order-store";
 
 type Kategori = "Makanan" | "Minuman" | "Camilan";
 
@@ -106,13 +109,15 @@ type TahapCheckout = "menu" | "review" | "success";
 const JUDUL_PANEL: Record<TahapCheckout, string> = {
   menu: "Keranjang Belanja",
   review: "Tinjau Pesanan",
-  success: "Simulasi pesanan selesai",
+  success: "Simulasi pesanan tersimpan",
 };
 
 const DAFTAR_MEJA: string[] = Array.from({ length: 20 }, (_, index) => String(index + 1));
 
 const MAKS_NAMA = 60;
 const MAKS_CATATAN = 200;
+
+const PESAN_ERROR_SIMPAN = "Pesanan demo tidak dapat disimpan di browser. Silakan coba lagi.";
 
 const tombolUtama = [
   "inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-700 px-5",
@@ -121,7 +126,7 @@ const tombolUtama = [
   fokus,
 ].join(" ");
 
-const tombolKembali = [
+const tombolSekunder = [
   "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-emerald-900/20 bg-white px-5",
   "text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-50 hover:text-emerald-950",
   fokus,
@@ -153,6 +158,13 @@ export function MenuOrderDemo() {
   const [namaPelanggan, setNamaPelanggan] = useState("");
   const [catatanPesanan, setCatatanPesanan] = useState("");
   const [errorMeja, setErrorMeja] = useState("");
+  const [errorSimpan, setErrorSimpan] = useState("");
+  const [submittedOrderId, setSubmittedOrderId] = useState<string | null>(null);
+  const panelBerhasilRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tahap === "success") panelBerhasilRef.current?.focus();
+  }, [tahap]);
 
   const menuTampil = useMemo(
     () =>
@@ -207,17 +219,33 @@ export function MenuOrderDemo() {
 
   function kembaliKeMenu() {
     setErrorMeja("");
+    setErrorSimpan("");
     setTahap("menu");
   }
 
   function submitCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittedOrderId !== null) return;
     if (nomorMeja === "") {
       setErrorMeja("Pilih nomor meja terlebih dahulu.");
       return;
     }
     setErrorMeja("");
-    setTahap("success");
+    setErrorSimpan("");
+
+    try {
+      const pesanan = addDemoOrder({
+        tableNumber: nomorMeja,
+        customerName: namaTrim === "" ? null : namaTrim,
+        items: barisKeranjang.map(({ item, quantity }) => ({ name: item.nama, quantity })),
+        total: totalHarga,
+        note: catatanTrim === "" ? null : catatanTrim,
+      });
+      setSubmittedOrderId(pesanan.id);
+      setTahap("success");
+    } catch {
+      setErrorSimpan(PESAN_ERROR_SIMPAN);
+    }
   }
 
   function pesananBaru() {
@@ -226,6 +254,8 @@ export function MenuOrderDemo() {
     setNamaPelanggan("");
     setCatatanPesanan("");
     setErrorMeja("");
+    setErrorSimpan("");
+    setSubmittedOrderId(null);
     setTahap("menu");
   }
 
@@ -246,7 +276,7 @@ export function MenuOrderDemo() {
             </p>
           </div>
           <p className="text-sm text-emerald-900/80 sm:max-w-[15rem] sm:text-right">
-            Keranjang ini hanya contoh tampilan, belum terkirim ke dapur.
+            Checkout demo menyimpan pesanan di browser ini saja.
           </p>
         </div>
 
@@ -555,11 +585,24 @@ export function MenuOrderDemo() {
                       </div>
                     </div>
 
+                    {errorSimpan !== "" && (
+                      <p
+                        role="alert"
+                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700"
+                      >
+                        {errorSimpan}
+                      </p>
+                    )}
+
+                    <p className="text-xs leading-relaxed text-emerald-900/80">
+                      Demo ini menyimpan pesanan hanya di localStorage browser.
+                    </p>
+
                     <div className="space-y-2">
                       <button type="submit" className={tombolUtama}>
                         Konfirmasi Pesanan Demo
                       </button>
-                      <button type="button" onClick={kembaliKeMenu} className={tombolKembali}>
+                      <button type="button" onClick={kembaliKeMenu} className={tombolSekunder}>
                         Kembali
                       </button>
                     </div>
@@ -567,12 +610,18 @@ export function MenuOrderDemo() {
                 )}
 
                 {tahap === "success" && (
-                  <div className="space-y-4">
+                  <div
+                    ref={panelBerhasilRef}
+                    tabIndex={-1}
+                    className={["space-y-4 focus:outline-none", fokus].join(" ")}
+                  >
                     <p className="text-sm leading-relaxed text-emerald-900/80">
-                      Ini hanya demo. Pesanan belum dikirim atau disimpan ke sistem warung.
+                      Pesanan ini hanya tersimpan di browser ini dan belum dikirim ke sistem warung
+                      nyata.
                     </p>
 
                     <dl className="space-y-2 border-t border-emerald-900/10 pt-4">
+                      <BarisRingkasan label="ID pesanan" nilai={submittedOrderId ?? ""} />
                       <BarisRingkasan label="Nomor meja" nilai={`Meja ${nomorMeja}`} />
                       {namaTrim !== "" && (
                         <BarisRingkasan label="Nama pelanggan" nilai={namaTrim} />
@@ -597,15 +646,12 @@ export function MenuOrderDemo() {
                     )}
 
                     <div className="space-y-2 border-t border-emerald-900/10 pt-4">
-                      <button type="button" onClick={kembaliKeMenu} className={tombolUtama}>
-                        Kembali ke Menu
-                      </button>
-                      <button type="button" onClick={pesananBaru} className={tombolKembali}>
+                      <Link href="/demo/operasional" className={tombolSekunder}>
+                        Lihat Antrean Kasir &amp; Dapur
+                      </Link>
+                      <button type="button" onClick={pesananBaru} className={tombolUtama}>
                         Mulai Pesanan Baru
                       </button>
-                      <p className="text-xs leading-relaxed text-emerald-900/80">
-                        Keranjang masih berisi, jadi kamu bisa memperbarui pesanan dari menu.
-                      </p>
                     </div>
                   </div>
                 )}

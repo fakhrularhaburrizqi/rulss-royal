@@ -1,27 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-type OrderStatus = "Diterima" | "Disiapkan" | "Siap Diantar" | "Selesai";
-
-type OrderItem = {
-  name: string;
-  quantity: number;
-};
-
-type Order = {
-  id: string;
-  tableNumber: string;
-  items: OrderItem[];
-  total: number;
-  status: OrderStatus;
-  note: string | null;
-};
+import {
+  createInitialDemoOrderState,
+  loadDemoOrderState,
+  resetDemoOrderState,
+  updateDemoOrderStatus,
+} from "@/lib/demo-order-store";
+import type { DemoOrder, DemoOrderState, DemoOrderStatus } from "@/lib/demo-order-store";
 
 type Peran = "Kasir" | "Dapur";
 
-type FilterStatus = "Semua" | OrderStatus;
+type FilterStatus = "Semua" | DemoOrderStatus;
 
 type AksiPesanan = { jenis: "tombol"; label: string } | { jenis: "teks"; teks: string };
 
@@ -35,58 +27,14 @@ const FILTER_STATUS: readonly FilterStatus[] = [
   "Selesai",
 ];
 
-const LANGKAH_STATUS: Record<OrderStatus, OrderStatus | null> = {
+const LANGKAH_STATUS: Record<DemoOrderStatus, DemoOrderStatus | null> = {
   Diterima: "Disiapkan",
   Disiapkan: "Siap Diantar",
   "Siap Diantar": "Selesai",
   Selesai: null,
 };
 
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: "WK-001",
-    tableNumber: "03",
-    items: [
-      { name: "Nasi Goreng Spesial", quantity: 2 },
-      { name: "Es Teh Manis", quantity: 2 },
-    ],
-    total: 46000,
-    status: "Diterima",
-    note: "Satu nasi goreng tidak pedas",
-  },
-  {
-    id: "WK-002",
-    tableNumber: "07",
-    items: [
-      { name: "Mie Ayam Warungku", quantity: 1 },
-      { name: "Pisang Goreng Crispy", quantity: 1 },
-    ],
-    total: 25000,
-    status: "Disiapkan",
-    note: null,
-  },
-  {
-    id: "WK-003",
-    tableNumber: "12",
-    items: [
-      { name: "Ayam Geprek Sambal", quantity: 2 },
-      { name: "Kopi Susu Gula Aren", quantity: 2 },
-    ],
-    total: 64000,
-    status: "Siap Diantar",
-    note: "Sambal dipisah",
-  },
-  {
-    id: "WK-004",
-    tableNumber: "05",
-    items: [{ name: "Nasi Goreng Spesial", quantity: 1 }],
-    total: 18000,
-    status: "Selesai",
-    note: null,
-  },
-];
-
-const KELAS_STATUS: Record<OrderStatus, string> = {
+const KELAS_STATUS: Record<DemoOrderStatus, string> = {
   Diterima: "border-amber-300 bg-amber-100 text-amber-900",
   Disiapkan: "border-emerald-300 bg-emerald-100 text-emerald-900",
   "Siap Diantar": "border-emerald-900/30 bg-[#F6F1E4] text-emerald-950",
@@ -95,9 +43,9 @@ const KELAS_STATUS: Record<OrderStatus, string> = {
 
 const fokus = "focus-visible:ring-2 focus-visible:ring-amber-600";
 
-const tombolKembali = [
+const tombolSekunder = [
   "inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-900/25 bg-white px-4",
-  "text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-50",
+  "text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-50 hover:text-emerald-950",
   fokus,
 ].join(" ");
 
@@ -143,16 +91,7 @@ function formatRupiah(nilai: number): string {
   return `Rp${nilai.toLocaleString("id-ID")}`;
 }
 
-function lanjutkanStatus(daftar: Order[], id: string): Order[] {
-  return daftar.map((order) => {
-    if (order.id !== id) return order;
-    const berikut = LANGKAH_STATUS[order.status];
-    if (berikut === null) return order;
-    return { ...order, status: berikut };
-  });
-}
-
-function aksiPesanan(order: Order, peran: Peran): AksiPesanan {
+function aksiPesanan(order: DemoOrder, peran: Peran): AksiPesanan {
   if (peran === "Kasir") {
     if (order.status === "Siap Diantar") return { jenis: "tombol", label: "Tandai Selesai" };
     if (order.status === "Selesai") return { jenis: "teks", teks: "Pesanan sudah selesai." };
@@ -177,7 +116,7 @@ function teksAntreanKosong(peran: Peran): string {
 }
 
 type KartuPesananProps = {
-  order: Order;
+  order: DemoOrder;
   peran: Peran;
   tampilkanTotal: boolean;
   onLanjut: (id: string) => void;
@@ -192,6 +131,9 @@ function KartuPesanan({ order, peran, tampilkanTotal, onLanjut }: KartuPesananPr
         <div>
           <p className="text-xs font-bold text-emerald-700">{order.id}</p>
           <h3 className="mt-1 text-xl font-bold text-emerald-950">Meja {order.tableNumber}</h3>
+          {order.customerName !== null && (
+            <p className="mt-1 text-sm text-emerald-900">Pelanggan: {order.customerName}</p>
+          )}
         </div>
         <span className={`${badgeStatus} ${KELAS_STATUS[order.status]}`}>
           <span className="sr-only">Status: </span>
@@ -240,10 +182,23 @@ function KartuPesanan({ order, peran, tampilkanTotal, onLanjut }: KartuPesananPr
 }
 
 export function OperationalDemo() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [state, setState] = useState<DemoOrderState>(() => createInitialDemoOrderState());
   const [peran, setPeran] = useState<Peran>("Kasir");
   const [filter, setFilter] = useState<FilterStatus>("Semua");
   const [pesan, setPesan] = useState("");
+  const [gagalSimpan, setGagalSimpan] = useState(false);
+
+  const orders = state.orders;
+
+  useEffect(() => {
+    try {
+      setState(loadDemoOrderState());
+      setGagalSimpan(false);
+    } catch {
+      setState(createInitialDemoOrderState());
+      setGagalSimpan(true);
+    }
+  }, []);
 
   const pesananAktif = orders.filter((order) => order.status !== "Selesai").length;
   const sedangDisiapkan = orders.filter((order) => order.status === "Disiapkan").length;
@@ -267,8 +222,24 @@ export function OperationalDemo() {
     if (!order) return;
     const berikut = LANGKAH_STATUS[order.status];
     if (berikut === null) return;
-    setOrders((sebelumnya) => lanjutkanStatus(sebelumnya, orderId));
-    setPesan(`${order.id} berubah menjadi ${berikut}.`);
+    try {
+      setState(updateDemoOrderStatus(orderId, berikut));
+      setGagalSimpan(false);
+      setPesan(`${order.id} berubah menjadi ${berikut}.`);
+    } catch {
+      setGagalSimpan(true);
+    }
+  }
+
+  function resetDataDemo() {
+    try {
+      setState(resetDemoOrderState());
+      setFilter("Semua");
+      setGagalSimpan(false);
+      setPesan("Data demo dikembalikan ke kondisi awal.");
+    } catch {
+      setGagalSimpan(true);
+    }
   }
 
   const judulAntrean = peran === "Kasir" ? "Daftar Pesanan" : "Antrean Dapur";
@@ -289,7 +260,7 @@ export function OperationalDemo() {
       <header className="border-b border-emerald-900/10 bg-[#FDFAF4]">
         <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className={tombolKembali}>
+            <Link href="/" className={tombolSekunder}>
               Kembali ke Beranda
             </Link>
             <span className="rounded-lg bg-amber-400 px-2.5 py-1 text-xs font-bold text-emerald-950">
@@ -302,13 +273,31 @@ export function OperationalDemo() {
             Operasional Warungku
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-emerald-900/80 sm:text-base">
-            Semua pesanan di halaman ini adalah data contoh dan tidak tersimpan. Status akan kembali
-            ke data awal ketika halaman direfresh.
+            Semua pesanan di halaman ini adalah data contoh untuk melihat alur kasir dan dapur.
           </p>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-xs leading-relaxed text-emerald-900/80 sm:text-sm">
+              Data operasional demo disimpan hanya di localStorage browser ini.
+            </p>
+            <button type="button" onClick={resetDataDemo} className={tombolSekunder}>
+              Reset Data Demo
+            </button>
+          </div>
         </div>
       </header>
 
       <main id="konten-demo" className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {gagalSimpan && (
+          <p
+            role="alert"
+            className="mb-6 rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900"
+          >
+            Penyimpanan browser tidak dapat diakses, jadi perubahan tidak dapat disimpan. Data
+            contoh tetap ditampilkan.
+          </p>
+        )}
+
         <section aria-labelledby="judul-ringkasan">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="judul-ringkasan" className="text-lg font-bold text-emerald-950 sm:text-xl">
