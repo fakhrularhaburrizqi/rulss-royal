@@ -16,6 +16,8 @@ export default defineConfig({
         "lib/validators/**/*.ts",
         "lib/services/**/*.ts",
         "lib/auth/errors.ts",
+        "lib/order/**/*.ts",
+        "lib/validators/order.validator.ts",
       ],
       exclude: ["**/*.d.ts"],
     },
