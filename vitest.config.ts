@@ -12,6 +12,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: [
+        "app/dashboard/order-actions.ts",
         "lib/helpers/**/*.ts",
         "lib/validators/**/*.ts",
         "lib/services/**/*.ts",
