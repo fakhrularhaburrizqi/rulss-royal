@@ -13,6 +13,7 @@ export default defineConfig({
       provider: "v8",
       include: [
         "app/dashboard/order-actions.ts",
+        "app/dashboard/menu-actions.ts",
         "lib/helpers/**/*.ts",
         "lib/validators/**/*.ts",
         "lib/services/**/*.ts",
