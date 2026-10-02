@@ -7,7 +7,8 @@ import {
 } from "@/lib/auth/authorization";
 import { OrderDomainError, type OrderErrorCode } from "@/lib/order/errors";
 
-export type OrderPermissionKey = "orders.manage" | "menu.view" | "menu.manage";
+export type OrderPermissionKey =
+  "orders.manage" | "menu.view" | "menu.manage" | "tables.view" | "tables.manage";
 
 export type OrderActor = {
   userId: string;
@@ -30,12 +31,16 @@ function normalizeOutletId(outletId: string): string {
   return normalized;
 }
 
+const ORDER_PERMISSION_KEYS: readonly OrderPermissionKey[] = [
+  "orders.manage",
+  "menu.view",
+  "menu.manage",
+  "tables.view",
+  "tables.manage",
+];
+
 function assertOrderPermissionKey(permission: OrderPermissionKey): void {
-  if (
-    permission !== "orders.manage" &&
-    permission !== "menu.view" &&
-    permission !== "menu.manage"
-  ) {
+  if (!ORDER_PERMISSION_KEYS.includes(permission)) {
     throw new OrderDomainError("INVALID_INPUT");
   }
 }

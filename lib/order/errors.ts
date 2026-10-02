@@ -7,6 +7,9 @@ export type OrderErrorCode =
   | "MENU_ITEM_UNAVAILABLE"
   | "TABLE_REQUIRED"
   | "TABLE_NOT_FOUND"
+  | "TABLE_CODE_CONFLICT"
+  | "TABLE_VERSION_CONFLICT"
+  | "TABLE_STATE_CONFLICT"
   | "ORDER_NOT_FOUND"
   | "INVALID_TRANSITION"
   | "VERSION_CONFLICT"
@@ -30,6 +33,9 @@ const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   MENU_ITEM_UNAVAILABLE: "Salah satu menu tidak tersedia.",
   TABLE_REQUIRED: "Nomor meja wajib diisi untuk pesanan ini.",
   TABLE_NOT_FOUND: "Meja tidak ditemukan.",
+  TABLE_CODE_CONFLICT: "Kode meja sudah digunakan di outlet ini.",
+  TABLE_VERSION_CONFLICT: "Data meja telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
+  TABLE_STATE_CONFLICT: "Status meja tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
   ORDER_NOT_FOUND: "Pesanan tidak ditemukan.",
   INVALID_TRANSITION: "Perubahan status pesanan tidak diizinkan.",
   VERSION_CONFLICT: "Pesanan telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
@@ -151,6 +157,62 @@ export function isCatalogNameUniqueViolation(error: unknown): boolean {
       .map((part) => part.trim())
       .filter((part) => part !== "");
     return matchesCatalogNameComposite(parts);
+  }
+
+  return false;
+}
+
+const TABLE_CODE_UNIQUE_FIELDS = ["outletid", "code"] as const;
+
+const TABLE_CODE_UNIQUE_CONSTRAINTS = [
+  "diningtable_outletid_code_key",
+  "outletid,code",
+  "(outletid,code)",
+] as const;
+
+function matchesTableCodeComposite(parts: readonly string[]): boolean {
+  if (parts.length !== TABLE_CODE_UNIQUE_FIELDS.length) {
+    return false;
+  }
+  const uniqueParts = new Set(parts);
+  if (uniqueParts.size !== TABLE_CODE_UNIQUE_FIELDS.length) {
+    return false;
+  }
+  return TABLE_CODE_UNIQUE_FIELDS.every((field) => uniqueParts.has(field));
+}
+
+export function isTableCodeUniqueViolation(error: unknown): boolean {
+  if (getPrismaErrorCode(error) !== "P2002") {
+    return false;
+  }
+
+  const meta = (error as { meta?: unknown }).meta;
+  if (typeof meta !== "object" || meta === null) {
+    return false;
+  }
+  const target = (meta as { target?: unknown }).target;
+
+  if (Array.isArray(target)) {
+    const parts: string[] = [];
+    for (const item of target) {
+      if (typeof item !== "string") {
+        return false;
+      }
+      const normalized = item.trim().toLowerCase();
+      if (normalized === "") {
+        return false;
+      }
+      parts.push(normalized);
+    }
+    return matchesTableCodeComposite(parts);
+  }
+
+  if (typeof target === "string") {
+    const normalized = target.trim().toLowerCase();
+    if (normalized === "") {
+      return false;
+    }
+    return TABLE_CODE_UNIQUE_CONSTRAINTS.some((constraint) => normalized === constraint);
   }
 
   return false;

@@ -94,6 +94,12 @@ describe("requireOrderContext - input validation", () => {
       "menu.view ",
       "Menu.Manage",
       "menu.manage ",
+      "Tables.Manage",
+      "tables.write",
+      "tables.view ",
+      " Tables.view",
+      "table.view",
+      "tables.manage.",
       "",
       7,
     ];
@@ -109,18 +115,23 @@ describe("requireOrderContext - input validation", () => {
     expect(mockedPermission).not.toHaveBeenCalled();
   });
 
-  it("accepts exactly the three allowed permission keys at runtime", async () => {
+  it("accepts exactly the five allowed permission keys at runtime", async () => {
     const allowedKeys: readonly OrderPermissionKey[] = [
       "orders.manage",
       "menu.view",
       "menu.manage",
+      "tables.view",
+      "tables.manage",
     ];
+    expect(allowedKeys).toHaveLength(5);
     for (const allowedKey of allowedKeys) {
       const context = await requireOrderContext("outlet-1", allowedKey);
       expect(context.outletId).toBe("outlet-1");
       expect(mockedPermission).toHaveBeenCalledWith(allowedKey);
     }
     expect(mockedPermission).toHaveBeenCalledTimes(allowedKeys.length);
+    expect(mockedActiveUser).toHaveBeenCalledTimes(allowedKeys.length);
+    expect(mockedOutletAccess).toHaveBeenCalledTimes(allowedKeys.length);
   });
 });
 
@@ -156,6 +167,75 @@ describe("requireOrderContext - success", () => {
     expect(mockedActiveUser).toHaveBeenCalledTimes(1);
     expect(mockedOutletAccess).toHaveBeenCalledWith("outlet-1");
     expect(mockedPermission).toHaveBeenCalledWith("menu.manage");
+  });
+
+  it("returns a trusted context for tables.view", async () => {
+    const context = await requireOrderContext("outlet-1", "tables.view");
+
+    expect(context).toEqual({
+      actor: { userId: "user-1", tenantId: "tenant-1" },
+      outletId: "outlet-1",
+    });
+    expect(mockedActiveUser).toHaveBeenCalledTimes(1);
+    expect(mockedOutletAccess).toHaveBeenCalledWith("outlet-1");
+    expect(mockedPermission).toHaveBeenCalledWith("tables.view");
+  });
+
+  it("returns a trusted context for tables.manage", async () => {
+    const context = await requireOrderContext("outlet-1", "tables.manage");
+
+    expect(context).toEqual({
+      actor: { userId: "user-1", tenantId: "tenant-1" },
+      outletId: "outlet-1",
+    });
+    expect(mockedActiveUser).toHaveBeenCalledTimes(1);
+    expect(mockedOutletAccess).toHaveBeenCalledWith("outlet-1");
+    expect(mockedPermission).toHaveBeenCalledWith("tables.manage");
+  });
+
+  it("checks active user, outlet access, then permission for tables.manage", async () => {
+    const callOrder: string[] = [];
+    mockedActiveUser.mockImplementation(async () => {
+      callOrder.push("active-user");
+      return makeActiveUser();
+    });
+    mockedOutletAccess.mockImplementation(async (outletId: string) => {
+      callOrder.push(`outlet-access:${outletId}`);
+      return makeOutlet(outletId);
+    });
+    mockedPermission.mockImplementation(async (permissionKey: string) => {
+      callOrder.push(`permission:${permissionKey}`);
+      return true;
+    });
+
+    await requireOrderContext("  outlet-1  ", "tables.manage");
+
+    expect(callOrder).toEqual([
+      "active-user",
+      "outlet-access:outlet-1",
+      "permission:tables.manage",
+    ]);
+  });
+
+  it("checks active user, outlet access, then permission for tables.view", async () => {
+    const callOrder: string[] = [];
+    mockedActiveUser.mockImplementation(async () => {
+      callOrder.push("active-user");
+      return makeActiveUser();
+    });
+    mockedOutletAccess.mockImplementation(async (outletId: string) => {
+      callOrder.push(`outlet-access:${outletId}`);
+      return makeOutlet(outletId);
+    });
+    mockedPermission.mockImplementation(async (permissionKey: string) => {
+      callOrder.push(`permission:${permissionKey}`);
+      return true;
+    });
+
+    const context = await requireOrderContext("outlet-1", "tables.view");
+
+    expect(callOrder).toEqual(["active-user", "outlet-access:outlet-1", "permission:tables.view"]);
+    expect(context.outletId).toBe("outlet-1");
   });
 
   it("checks active user, outlet access, then permission for menu.manage", async () => {

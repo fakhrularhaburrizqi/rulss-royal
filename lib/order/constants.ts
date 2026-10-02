@@ -26,4 +26,10 @@ export const MAX_IMAGE_URL = 2048;
 
 export const MAX_SORT_ORDER = 9999;
 
+export const MAX_TABLE_CODE = 30;
+
+export const MIN_TABLE_CAPACITY = 1;
+
+export const MAX_TABLE_CAPACITY = 99;
+
 export const DEFAULT_TIMEZONE = "Asia/Jakarta" as const;
