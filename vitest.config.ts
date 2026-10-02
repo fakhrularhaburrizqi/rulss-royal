@@ -14,6 +14,7 @@ export default defineConfig({
       include: [
         "app/dashboard/order-actions.ts",
         "app/dashboard/menu-actions.ts",
+        "app/dashboard/table-actions.ts",
         "lib/helpers/**/*.ts",
         "lib/validators/**/*.ts",
         "lib/services/**/*.ts",
