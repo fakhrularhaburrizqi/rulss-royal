@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isCatalogNameUniqueViolation,
   isOrderNumberUniqueViolation,
   OrderDomainError,
   getOrderErrorMessage,
@@ -23,6 +24,13 @@ const ALL_CODES: readonly OrderErrorCode[] = [
   "ORDER_LIMIT_REACHED",
   "ORDER_NUMBER_CONFLICT",
   "INTERNAL_ERROR",
+  "CATEGORY_NOT_FOUND",
+  "MENU_ITEM_NOT_FOUND",
+  "CATEGORY_NAME_CONFLICT",
+  "MENU_NAME_CONFLICT",
+  "CATEGORY_NOT_AVAILABLE",
+  "CATALOG_VERSION_CONFLICT",
+  "CATALOG_STATE_CONFLICT",
 ];
 
 function p2002(target: unknown): unknown {
@@ -31,11 +39,31 @@ function p2002(target: unknown): unknown {
 
 describe("Order Errors", () => {
   it("provides a safe message for every error code", () => {
-    expect(ALL_CODES).toHaveLength(14);
+    expect(ALL_CODES).toHaveLength(21);
     for (const code of ALL_CODES) {
       const message = getOrderErrorMessage(code);
       expect(typeof message).toBe("string");
       expect(message.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("provides the exact safe messages for the seven catalog codes", () => {
+    const expected: Readonly<Record<string, string>> = {
+      CATEGORY_NOT_FOUND: "Kategori tidak ditemukan.",
+      MENU_ITEM_NOT_FOUND: "Menu tidak ditemukan.",
+      CATEGORY_NAME_CONFLICT: "Nama kategori sudah digunakan di outlet ini.",
+      MENU_NAME_CONFLICT: "Nama menu sudah digunakan di outlet ini.",
+      CATEGORY_NOT_AVAILABLE: "Kategori tidak tersedia untuk digunakan.",
+      CATALOG_VERSION_CONFLICT:
+        "Data katalog telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
+      CATALOG_STATE_CONFLICT:
+        "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
+    };
+
+    expect(Object.keys(expected)).toHaveLength(7);
+    for (const [code, message] of Object.entries(expected)) {
+      expect(getOrderErrorMessage(code as OrderErrorCode)).toBe(message);
+      expect(message).not.toMatch(/prisma|constraint|sql|stack|query/i);
     }
   });
 
@@ -71,6 +99,20 @@ describe("Order Errors", () => {
   it("maps Prisma P2003 to INVALID_INPUT", () => {
     const mapped = toOrderError({ code: "P2003" });
     expect(mapped.code).toBe("INVALID_INPUT");
+  });
+
+  it("does not auto-map a catalog P2002 violation in toOrderError", () => {
+    for (const target of [
+      ["tenantId", "outletId", "name"],
+      "MenuCategory_tenantId_outletId_name_key",
+      "MenuItem_tenantId_outletId_name_key",
+    ]) {
+      const violation = { code: "P2002", meta: { target } };
+      const mapped = toOrderError(violation);
+      expect(mapped.code).toBe("INTERNAL_ERROR");
+      expect(mapped.message).toBe(getOrderErrorMessage("INTERNAL_ERROR"));
+      expect(isCatalogNameUniqueViolation(violation)).toBe(true);
+    }
   });
 
   it("maps unknown errors to INTERNAL_ERROR without leaking details", () => {
@@ -159,6 +201,112 @@ describe("Order Errors", () => {
       expect(isOrderNumberUniqueViolation(p2002(["tenantId", "outletId", "orderNumber"]))).toBe(
         true
       );
+    });
+  });
+
+  describe("isCatalogNameUniqueViolation", () => {
+    it("accepts the composite field array target", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId", "name"]))).toBe(true);
+    });
+
+    it("accepts the composite fields in any order", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["name", "tenantId", "outletId"]))).toBe(true);
+      expect(isCatalogNameUniqueViolation(p2002(["outletId", "name", "tenantId"]))).toBe(true);
+    });
+
+    it("accepts the MenuCategory and MenuItem composite constraint names", () => {
+      expect(isCatalogNameUniqueViolation(p2002("MenuCategory_tenantId_outletId_name_key"))).toBe(
+        true
+      );
+      expect(isCatalogNameUniqueViolation(p2002("MenuItem_tenantId_outletId_name_key"))).toBe(true);
+    });
+
+    it("accepts constraint names case-insensitively", () => {
+      expect(isCatalogNameUniqueViolation(p2002("menucategory_tenantid_outletid_name_key"))).toBe(
+        true
+      );
+      expect(isCatalogNameUniqueViolation(p2002("MENUITEM_TENANTID_OUTLETID_NAME_KEY"))).toBe(true);
+    });
+
+    it("accepts a clear string composite of the three fields", () => {
+      expect(isCatalogNameUniqueViolation(p2002("tenantId,outletId,name"))).toBe(true);
+      expect(isCatalogNameUniqueViolation(p2002("(tenantId,outletId,name)"))).toBe(true);
+      expect(isCatalogNameUniqueViolation(p2002("name|outletId|tenantId"))).toBe(true);
+    });
+
+    it("rejects a single name target", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["name"]))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002("name"))).toBe(false);
+    });
+
+    it("rejects partial composites with only two fields", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "name"]))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(["outletId", "name"]))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId"]))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002("tenantId,name"))).toBe(false);
+    });
+
+    it("rejects composites carrying an extra field", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId", "name", "id"]))).toBe(
+        false
+      );
+      expect(isCatalogNameUniqueViolation(p2002("tenantId,outletId,name,id"))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(["public", "tenantId", "outletId", "name"]))).toBe(
+        false
+      );
+    });
+
+    it("rejects other unique constraints", () => {
+      expect(isCatalogNameUniqueViolation(p2002("User_tenantId_email_key"))).toBe(false);
+      expect(
+        isCatalogNameUniqueViolation(p2002("CustomerOrder_tenantId_outletId_orderNumber_key"))
+      ).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId", "id"]))).toBe(false);
+      expect(
+        isCatalogNameUniqueViolation(
+          p2002(["tenantId", "outletId", "categoryId", "isActive", "sortOrder"])
+        )
+      ).toBe(false);
+    });
+
+    it("rejects empty, null, missing, or foreign-shaped targets", () => {
+      expect(isCatalogNameUniqueViolation(p2002(""))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002([]))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(null))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(undefined))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002(42))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002({ name: true }))).toBe(false);
+      expect(isCatalogNameUniqueViolation(p2002([{ name: "x" }]))).toBe(false);
+      expect(isCatalogNameUniqueViolation({ code: "P2002" })).toBe(false);
+      expect(isCatalogNameUniqueViolation({ code: "P2002", meta: null })).toBe(false);
+      expect(isCatalogNameUniqueViolation({ code: "P2002", meta: "x" })).toBe(false);
+      expect(isCatalogNameUniqueViolation({ code: "P2002", meta: 7 })).toBe(false);
+    });
+
+    it("rejects non-P2002 errors and non-error inputs", () => {
+      expect(isCatalogNameUniqueViolation({ code: "P2003", meta: { target: ["name"] } })).toBe(
+        false
+      );
+      expect(
+        isCatalogNameUniqueViolation(
+          new Error("Unique constraint failed on the fields: (`tenantId`,`outletId`,`name`)")
+        )
+      ).toBe(false);
+      expect(isCatalogNameUniqueViolation(null)).toBe(false);
+      expect(isCatalogNameUniqueViolation(undefined)).toBe(false);
+      expect(isCatalogNameUniqueViolation("P2002")).toBe(false);
+    });
+
+    it("does not decide the category versus menu conflict mapping", () => {
+      expect(isCatalogNameUniqueViolation(p2002("MenuCategory_tenantId_outletId_name_key"))).toBe(
+        isCatalogNameUniqueViolation(p2002("MenuItem_tenantId_outletId_name_key"))
+      );
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId", "name"]))).toBe(true);
+    });
+
+    it("works without any database connection", () => {
+      expect(isCatalogNameUniqueViolation(p2002(["tenantId", "outletId", "name"]))).toBe(true);
+      expect(isCatalogNameUniqueViolation(p2002(["name"]))).toBe(false);
     });
   });
 });

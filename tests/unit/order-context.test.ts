@@ -88,8 +88,12 @@ describe("requireOrderContext - input validation", () => {
     const foreignPermissions = [
       "orders.view",
       "reports.view",
+      "users.manage",
       " Orders.manage",
       "orders.manage ",
+      "menu.view ",
+      "Menu.Manage",
+      "menu.manage ",
       "",
       7,
     ];
@@ -103,6 +107,20 @@ describe("requireOrderContext - input validation", () => {
     expect(mockedActiveUser).not.toHaveBeenCalled();
     expect(mockedOutletAccess).not.toHaveBeenCalled();
     expect(mockedPermission).not.toHaveBeenCalled();
+  });
+
+  it("accepts exactly the three allowed permission keys at runtime", async () => {
+    const allowedKeys: readonly OrderPermissionKey[] = [
+      "orders.manage",
+      "menu.view",
+      "menu.manage",
+    ];
+    for (const allowedKey of allowedKeys) {
+      const context = await requireOrderContext("outlet-1", allowedKey);
+      expect(context.outletId).toBe("outlet-1");
+      expect(mockedPermission).toHaveBeenCalledWith(allowedKey);
+    }
+    expect(mockedPermission).toHaveBeenCalledTimes(allowedKeys.length);
   });
 });
 
@@ -126,6 +144,38 @@ describe("requireOrderContext - success", () => {
     expect(context.outletId).toBe("outlet-1");
     expect(mockedOutletAccess).toHaveBeenCalledWith("outlet-1");
     expect(mockedPermission).toHaveBeenCalledWith("menu.view");
+  });
+
+  it("returns a trusted context for menu.manage", async () => {
+    const context = await requireOrderContext("outlet-1", "menu.manage");
+
+    expect(context).toEqual({
+      actor: { userId: "user-1", tenantId: "tenant-1" },
+      outletId: "outlet-1",
+    });
+    expect(mockedActiveUser).toHaveBeenCalledTimes(1);
+    expect(mockedOutletAccess).toHaveBeenCalledWith("outlet-1");
+    expect(mockedPermission).toHaveBeenCalledWith("menu.manage");
+  });
+
+  it("checks active user, outlet access, then permission for menu.manage", async () => {
+    const callOrder: string[] = [];
+    mockedActiveUser.mockImplementation(async () => {
+      callOrder.push("active-user");
+      return makeActiveUser();
+    });
+    mockedOutletAccess.mockImplementation(async (outletId: string) => {
+      callOrder.push(`outlet-access:${outletId}`);
+      return makeOutlet(outletId);
+    });
+    mockedPermission.mockImplementation(async (permissionKey: string) => {
+      callOrder.push(`permission:${permissionKey}`);
+      return true;
+    });
+
+    await requireOrderContext("  outlet-1  ", "menu.manage");
+
+    expect(callOrder).toEqual(["active-user", "outlet-access:outlet-1", "permission:menu.manage"]);
   });
 
   it("takes actor identity only from the active-user helper result", async () => {

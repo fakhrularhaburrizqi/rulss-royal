@@ -12,7 +12,14 @@ export type OrderErrorCode =
   | "VERSION_CONFLICT"
   | "ORDER_LIMIT_REACHED"
   | "ORDER_NUMBER_CONFLICT"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "CATEGORY_NOT_FOUND"
+  | "MENU_ITEM_NOT_FOUND"
+  | "CATEGORY_NAME_CONFLICT"
+  | "MENU_NAME_CONFLICT"
+  | "CATEGORY_NOT_AVAILABLE"
+  | "CATALOG_VERSION_CONFLICT"
+  | "CATALOG_STATE_CONFLICT";
 
 const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   UNAUTHENTICATED: "Sesi Anda tidak valid. Silakan masuk kembali.",
@@ -29,6 +36,14 @@ const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   ORDER_LIMIT_REACHED: "Jumlah pesanan hari ini sudah mencapai batas maksimum.",
   ORDER_NUMBER_CONFLICT: "Gagal membuat nomor pesanan. Silakan coba lagi.",
   INTERNAL_ERROR: "Terjadi kesalahan. Silakan coba lagi.",
+  CATEGORY_NOT_FOUND: "Kategori tidak ditemukan.",
+  MENU_ITEM_NOT_FOUND: "Menu tidak ditemukan.",
+  CATEGORY_NAME_CONFLICT: "Nama kategori sudah digunakan di outlet ini.",
+  MENU_NAME_CONFLICT: "Nama menu sudah digunakan di outlet ini.",
+  CATEGORY_NOT_AVAILABLE: "Kategori tidak tersedia untuk digunakan.",
+  CATALOG_VERSION_CONFLICT:
+    "Data katalog telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
+  CATALOG_STATE_CONFLICT: "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
 };
 
 export function getOrderErrorMessage(code: OrderErrorCode): string {
@@ -85,6 +100,60 @@ export function isOrderNumberUniqueViolation(error: unknown): boolean {
     return false;
   }
   return ORDER_NUMBER_UNIQUE_FIELDS.every((field) => target.includes(field));
+}
+
+const CATALOG_NAME_UNIQUE_FIELDS = ["tenantid", "outletid", "name"] as const;
+
+const CATALOG_NAME_UNIQUE_CONSTRAINTS = [
+  "menucategory_tenantid_outletid_name_key",
+  "menuitem_tenantid_outletid_name_key",
+] as const;
+
+const CATALOG_NAME_TARGET_SPLIT = /[,+|_\s]+/;
+
+function matchesCatalogNameComposite(parts: readonly string[]): boolean {
+  if (parts.length !== CATALOG_NAME_UNIQUE_FIELDS.length) {
+    return false;
+  }
+  const uniqueParts = new Set(parts);
+  return CATALOG_NAME_UNIQUE_FIELDS.every((field) => uniqueParts.has(field));
+}
+
+export function isCatalogNameUniqueViolation(error: unknown): boolean {
+  if (getPrismaErrorCode(error) !== "P2002") {
+    return false;
+  }
+
+  const meta = (error as { meta?: unknown }).meta;
+  if (typeof meta !== "object" || meta === null) {
+    return false;
+  }
+  const target = (meta as { target?: unknown }).target;
+
+  if (Array.isArray(target)) {
+    const parts = target
+      .map((item) => String(item).trim().toLowerCase())
+      .filter((item) => item !== "");
+    return matchesCatalogNameComposite(parts);
+  }
+
+  if (typeof target === "string") {
+    const normalized = target.trim().toLowerCase();
+    if (normalized === "") {
+      return false;
+    }
+    if (CATALOG_NAME_UNIQUE_CONSTRAINTS.some((constraint) => normalized === constraint)) {
+      return true;
+    }
+    const parts = normalized
+      .replace(/[^a-z0-9,+|_\s]+/g, " ")
+      .split(CATALOG_NAME_TARGET_SPLIT)
+      .map((part) => part.trim())
+      .filter((part) => part !== "");
+    return matchesCatalogNameComposite(parts);
+  }
+
+  return false;
 }
 
 export function toOrderError(error: unknown): OrderDomainError {
