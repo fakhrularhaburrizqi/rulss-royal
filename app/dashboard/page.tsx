@@ -1,43 +1,180 @@
-import { requireActiveUser } from "@/lib/auth/authorization";
-import { logoutAction } from "./actions";
+import { redirect } from "next/navigation";
+import { resolveDashboardContext } from "@/lib/dashboard/context";
+import { DashboardShell } from "./components/DashboardShell";
 
-export default async function DashboardPage() {
-  const { user, tenant } = await requireActiveUser();
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  let resolution;
+  try {
+    resolution = await resolveDashboardContext(searchParams);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
+    redirect("/login");
+  }
+
+  const { user, tenant } = await (async () => {
+    try {
+      const { requireActiveUser } = await import("@/lib/auth/authorization");
+      return await requireActiveUser();
+    } catch {
+      redirect("/login");
+    }
+  })();
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      <div className="mx-auto max-w-4xl rounded bg-white p-6 shadow">
-        <div className="mb-6 flex items-center justify-between border-b pb-4">
-          <h1 className="text-xl font-bold text-gray-900">Dashboard Warungku</h1>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-            >
-              Keluar
-            </button>
-          </form>
-        </div>
-        <div className="space-y-2">
-          <p className="text-gray-700">
-            <strong>Nama Tenant:</strong> {tenant.name} ({tenant.code})
-          </p>
-          <p className="text-gray-700">
-            <strong>Pengguna:</strong> {user.name} ({user.email})
-          </p>
-          <p className="text-gray-700">
-            <strong>Active Outlet ID:</strong> {userSessionOutletInfo()}
-          </p>
-          <div className="mt-4 rounded border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-            Catatan Phase 2A: Pemilihan outlet lengkap akan diselesaikan pada tahap integrasi
-            database (Phase 2C).
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-}
+    <DashboardShell
+      resolution={resolution}
+      tenantName={tenant.name}
+      tenantCode={tenant.code}
+      userName={user.name}
+    >
+      {(() => {
+        switch (resolution.kind) {
+          case "selected":
+            return (
+              <div className="space-y-6">
+                <section aria-labelledby="outlet-info-heading">
+                  <h2 id="outlet-info-heading" className="sr-only">
+                    Informasi outlet aktif
+                  </h2>
+                  <div className="rounded-lg border border-emerald-900/10 bg-white p-4">
+                    <dl className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-sm font-medium text-emerald-700">Outlet</dt>
+                        <dd className="mt-1 text-sm font-semibold text-emerald-950">
+                          {resolution.outlet.name} ({resolution.outlet.code})
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-emerald-700">ID</dt>
+                        <dd className="mt-1 text-sm font-mono text-emerald-900">
+                          {resolution.outlet.id}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                </section>
 
-function userSessionOutletInfo() {
-  return "Belum dipilih / Ditunda ke Phase 2C";
+                <section aria-labelledby="capabilities-heading">
+                  <h2 id="capabilities-heading" className="text-lg font-semibold text-emerald-950">
+                    Akses Fitur
+                  </h2>
+                  <ul className="mt-3 flex flex-wrap gap-2" role="list">
+                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
+                      resolution.capabilities.canViewCatalog
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      Lihat Katalog {resolution.capabilities.canViewCatalog && "✓"}
+                    </li>
+                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
+                      resolution.capabilities.canManageCatalog
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      Kelola Katalog {resolution.capabilities.canManageCatalog && "✓"}
+                    </li>
+                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
+                      resolution.capabilities.canViewTables
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      Lihat Meja {resolution.capabilities.canViewTables && "✓"}
+                    </li>
+                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
+                      resolution.capabilities.canManageTables
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      Kelola Meja {resolution.capabilities.canManageTables && "✓"}
+                    </li>
+                  </ul>
+                </section>
+
+                <section aria-labelledby="outlets-heading">
+                  <h2 id="outlets-heading" className="text-lg font-semibold text-emerald-950">
+                    Outlet Tersedia ({resolution.outlets.length})
+                  </h2>
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                    {resolution.outlets.map((outlet) => (
+                      <li
+                        key={outlet.id}
+                        className={`rounded-lg border p-3 ${
+                          outlet.id === resolution.outlet.id
+                            ? "border-emerald-300 bg-emerald-50"
+                            : "border-emerald-900/10 bg-white hover:border-emerald-300"
+                        }`}
+                      >
+                        <div className="font-semibold text-emerald-950">{outlet.name}</div>
+                        <div className="text-sm text-emerald-700">{outlet.code}</div>
+                        <div className="mt-1 text-xs font-mono text-emerald-500">{outlet.id}</div>
+                        {outlet.id === resolution.outlet.id && (
+                          <span className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            Aktif
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            );
+
+          case "selection-required":
+            return (
+              <div className="rounded-lg border border-emerald-900/10 bg-white p-6 text-center">
+                <h2 className="text-lg font-semibold text-emerald-950">Pilih Outlet</h2>
+                <p className="mt-2 text-sm text-emerald-700">
+                  Anda memiliki akses ke beberapa outlet. Pilih outlet untuk mengelola katalog dan meja.
+                </p>
+                <p className="mt-1 text-xs text-emerald-500">
+                  Outlet terpilih akan diteruskan ke halaman Kategori, Menu, dan Meja.
+                </p>
+              </div>
+            );
+
+          case "no-accessible-outlet":
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+                <h2 className="text-lg font-semibold text-amber-900">Tidak Ada Outlet Akses</h2>
+                <p className="mt-2 text-sm text-amber-800">
+                  Akun Anda tidak memiliki akses ke outlet aktif manapun. Hubungi administrator.
+                </p>
+              </div>
+            );
+
+          case "invalid-or-denied":
+            return (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+                <h2 className="text-lg font-semibold text-red-900">Outlet Tidak Valid</h2>
+                <p className="mt-2 text-sm text-red-800">
+                  Outlet yang diminta tidak ditemukan atau akses ditolak.
+                </p>
+                {resolution.outlets.length > 0 && (
+                  <div className="mt-4 text-left">
+                    <p className="text-sm font-medium text-red-700">Pilih outlet yang tersedia:</p>
+                    <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                      {resolution.outlets.map((outlet) => (
+                        <li
+                          key={outlet.id}
+                          className="rounded-lg border border-red-200 bg-white p-3"
+                        >
+                          <div className="font-semibold text-red-900">{outlet.name}</div>
+                          <div className="text-sm text-red-700">{outlet.code}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+        }
+      })()}
+    </DashboardShell>
+  );
 }
