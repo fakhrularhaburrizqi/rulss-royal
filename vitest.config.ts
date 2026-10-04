@@ -9,21 +9,22 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/**/*.test.ts"],
-    coverage: {
-      provider: "v8",
-      include: [
-        "app/dashboard/order-actions.ts",
-        "app/dashboard/menu-actions.ts",
-        "app/dashboard/table-actions.ts",
-        "lib/helpers/**/*.ts",
-        "lib/validators/**/*.ts",
-        "lib/services/**/*.ts",
-        "lib/auth/errors.ts",
-        "lib/order/**/*.ts",
-        "lib/validators/order.validator.ts",
-      ],
-      exclude: ["**/*.d.ts"],
-    },
+coverage: {
+        provider: "v8",
+        include: [
+          "app/dashboard/order-actions.ts",
+          "app/dashboard/menu-actions.ts",
+          "app/dashboard/table-actions.ts",
+          "lib/helpers/**/*.ts",
+          "lib/validators/**/*.ts",
+          "lib/services/**/*.ts",
+          "lib/auth/errors.ts",
+          "lib/order/**/*.ts",
+          "lib/validators/order.validator.ts",
+          "lib/dashboard/**/*.ts",
+        ],
+        exclude: ["**/*.d.ts"],
+      },
   },
   resolve: {
     alias: [
