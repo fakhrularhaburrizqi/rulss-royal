@@ -32,6 +32,7 @@ export default async function DashboardPage({
       tenantName={tenant.name}
       tenantCode={tenant.code}
       userName={user.name}
+      currentPath="/dashboard"
     >
       {(() => {
         switch (resolution.kind) {

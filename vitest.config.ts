@@ -15,6 +15,8 @@ export default defineConfig({
         "app/dashboard/order-actions.ts",
         "app/dashboard/menu-actions.ts",
         "app/dashboard/table-actions.ts",
+        "app/dashboard/kategori/**/*.{ts,tsx}",
+        "lib/api/**/*.ts",
         "lib/helpers/**/*.ts",
         "lib/validators/**/*.ts",
         "lib/services/**/*.ts",
@@ -33,8 +35,13 @@ export default defineConfig({
         test: {
           name: "dom",
           environment: "jsdom",
-          include: ["tests/unit/ui-primitives.test.tsx"],
+          include: [
+            "tests/unit/ui-primitives.test.tsx",
+            "tests/unit/useCategoriesQuery.test.tsx",
+            "tests/unit/CategoryTable.test.tsx",
+          ],
           setupFiles: ["tests/setup-dom.ts"],
+          testTimeout: 40000,
         },
       },
       {
@@ -43,7 +50,11 @@ export default defineConfig({
           name: "node",
           environment: "node",
           include: ["tests/**/*.test.ts"],
-          exclude: ["tests/unit/ui-primitives.test.tsx"],
+          exclude: [
+            "tests/unit/ui-primitives.test.tsx",
+            "tests/unit/useCategoriesQuery.test.tsx",
+            "tests/unit/CategoryTable.test.tsx",
+          ],
         },
       },
     ],

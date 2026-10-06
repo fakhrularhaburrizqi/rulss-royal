@@ -40,7 +40,7 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
             return null;
           }
 
-          const isComingSoon = item.requiredPermission !== undefined;
+          const isComingSoon = item.requiredPermission !== undefined && item.href !== "/dashboard/kategori";
 
           if (isComingSoon) {
             return (

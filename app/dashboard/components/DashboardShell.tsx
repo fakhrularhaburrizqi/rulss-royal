@@ -10,6 +10,7 @@ type DashboardShellProps = {
   tenantName: string;
   tenantCode: string;
   userName: string;
+  currentPath?: string;
 };
 
 export function DashboardShell({
@@ -18,6 +19,7 @@ export function DashboardShell({
   tenantName,
   tenantCode,
   userName,
+  currentPath,
 }: DashboardShellProps) {
   const isSelected = resolution.kind === "selected";
 
@@ -52,7 +54,7 @@ export function DashboardShell({
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <DashboardNavigation
           resolution={resolution}
-          currentPath="/dashboard"
+          currentPath={currentPath}
         />
         <main id="main-content" className="mt-6">
           {children}
