@@ -67,6 +67,7 @@ export default async function KategoriPage({
         outletId={resolution.outlet.id}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
+        canManageCatalog={resolution.capabilities.canManageCatalog}
       />
     </DashboardShell>
   );

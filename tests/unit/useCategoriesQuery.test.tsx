@@ -14,6 +14,12 @@ import {
 import type { PaginatedCategoriesResult } from "@/lib/services/menu-category-query.service";
 import { useCategoriesQuery } from "@/app/dashboard/kategori/useCategoriesQuery";
 
+// Mock server action boundary
+const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
+vi.mock("@/app/dashboard/menu-actions", () => ({
+  createCategoryAction: mockCreateCategoryAction,
+}));
+
 const authScope: CategoryAuthScope = { tenantId: "tenant-1", userId: "user-1" };
 const outletId = "outlet-1";
 
@@ -507,5 +513,241 @@ describe("useCategoriesQuery behavior", () => {
     renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} />);
     await waitFor(() => expect(screen.getByText("Tidak ada kategori ditemukan")).toBeInTheDocument());
     expect(fetchCount).toBe(1);
+  });
+
+  it("scoped invalidation: invalidates only matching tenant/user/outlet scope", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, retryDelay: 0, gcTime: 0 } },
+    });
+
+    let fetchCountScope1 = 0;
+    let fetchCountScope2 = 0;
+
+    mockedFetchCategories.mockImplementation(async (params) => {
+      if (params.outlet === "outlet-1") {
+        fetchCountScope1++;
+        return { data: [{ id: "cat-1", name: "Scope1", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }], nextCursor: null, hasMore: false };
+      }
+      fetchCountScope2++;
+      return { data: [{ id: "cat-2", name: "Scope2", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }], nextCursor: null, hasMore: false };
+    });
+
+    // Render two different scopes in the same test
+    function Scope1Component() {
+      return <CategoryTable authScope={authScope} outletId="outlet-1" />;
+    }
+
+    function Scope2Component() {
+      return <CategoryTable authScope={authScope} outletId="outlet-2" />;
+    }
+
+    // Use a single QueryClientProvider but different scope keys
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Scope1Component />
+      </QueryClientProvider>
+    );
+    await waitFor(() => expect(screen.getByText("Scope1")).toBeInTheDocument());
+    expect(fetchCountScope1).toBe(1);
+    expect(fetchCountScope2).toBe(0);
+
+    // Now simulate invalidation for scope 1 only
+    await queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        if (!Array.isArray(key) || key.length < 3) return false;
+        const params = key[2];
+        if (typeof params !== "object" || params === null) return false;
+        const p = params as Record<string, unknown>;
+        const authScopeObj = p.authScope as { tenantId?: string; userId?: string } | undefined;
+        return authScopeObj?.tenantId === authScope.tenantId && authScopeObj?.userId === authScope.userId && p.outletId === "outlet-1";
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText("Scope1")).toBeInTheDocument());
+    expect(fetchCountScope1).toBe(2);
+    expect(fetchCountScope2).toBe(0);
+  });
+
+  it("scoped invalidation: matching variants, other tenant/user/outlet, unrelated prefix, malformed keys", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, retryDelay: 0, gcTime: 0 } },
+    });
+
+    let fetchCountScope1 = 0;
+    let fetchCountScope2 = 0;
+    let fetchCountScope3 = 0;
+
+    mockedFetchCategories.mockImplementation(async (params) => {
+      if (params.outlet === "outlet-1") {
+        fetchCountScope1++;
+        return { data: [{ id: "cat-1", name: "Scope1", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }], nextCursor: null, hasMore: false };
+      }
+      if (params.outlet === "outlet-2") {
+        fetchCountScope2++;
+        return { data: [{ id: "cat-2", name: "Scope2", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }], nextCursor: null, hasMore: false };
+      }
+      fetchCountScope3++;
+      return { data: [{ id: "cat-3", name: "Scope3", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }], nextCursor: null, hasMore: false };
+    });
+
+    function Scope1Component() {
+      return <CategoryTable authScope={authScope} outletId="outlet-1" />;
+    }
+    function Scope2Component() {
+      return <CategoryTable authScope={authScope} outletId="outlet-2" />;
+    }
+    function Scope3Component() {
+      return <CategoryTable authScope={{ tenantId: "tenant-2", userId: "user-2" }} outletId="outlet-3" />;
+    }
+
+    // Render all three scopes in one render with a wrapper
+    function AllScopesComponent() {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <Scope1Component />
+          <Scope2Component />
+          <Scope3Component />
+        </QueryClientProvider>
+      );
+    }
+
+    render(<AllScopesComponent />);
+
+    // Wait for all three to load
+    await waitFor(() => expect(screen.getAllByText("Scope1")).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText("Scope2")).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText("Scope3")).toHaveLength(1));
+    expect(fetchCountScope1).toBe(1);
+    expect(fetchCountScope2).toBe(1);
+    expect(fetchCountScope3).toBe(1);
+
+    // Now invalidate only scope1 (matching tenant/user/outlet)
+    await queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        if (!Array.isArray(key) || key.length < 3) return false;
+        if (key[0] !== "categories" || key[1] !== "list") return false;
+        const params = key[2];
+        if (typeof params !== "object" || params === null) return false;
+        const p = params as Record<string, unknown>;
+        if (typeof p.authScope !== "object" || p.authScope === null) return false;
+        const authScopeObj = p.authScope as { tenantId?: unknown; userId?: unknown } | undefined;
+        const tenantId = authScopeObj?.tenantId;
+        const userId = authScopeObj?.userId;
+        const outletIdParam = p.outletId;
+        return (
+          typeof tenantId === "string" &&
+          typeof userId === "string" &&
+          typeof outletIdParam === "string" &&
+          tenantId === authScope.tenantId &&
+          userId === authScope.userId &&
+          outletIdParam === "outlet-1"
+        );
+      },
+    });
+
+    // Wait for scope1 to refetch
+    await waitFor(() => expect(fetchCountScope1).toBe(2));
+    expect(fetchCountScope2).toBe(1);
+    expect(fetchCountScope3).toBe(1);
+
+    // Test malformed keys don't cause issues
+    queryClient.setQueryData(["categories", "list", "malformed"], { data: [], nextCursor: null, hasMore: false });
+    queryClient.setQueryData(["categories", "list", { authScope: null, outletId: "outlet-1" }], { data: [], nextCursor: null, hasMore: false });
+    queryClient.setQueryData(["other", "prefix", { authScope: { tenantId: "tenant-1", userId: "user-1" }, outletId: "outlet-1" }], { data: [], nextCursor: null, hasMore: false });
+
+    await queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        if (!Array.isArray(key) || key.length < 3) return false;
+        if (key[0] !== "categories" || key[1] !== "list") return false;
+        const params = key[2];
+        if (typeof params !== "object" || params === null) return false;
+        const p = params as Record<string, unknown>;
+        if (typeof p.authScope !== "object" || p.authScope === null) return false;
+        const authScopeObj = p.authScope as { tenantId?: unknown; userId?: unknown } | undefined;
+        const tenantId = authScopeObj?.tenantId;
+        const userId = authScopeObj?.userId;
+        const outletIdParam = p.outletId;
+        return (
+          typeof tenantId === "string" &&
+          typeof userId === "string" &&
+          typeof outletIdParam === "string" &&
+          tenantId === authScope.tenantId &&
+          userId === authScope.userId &&
+          outletIdParam === "outlet-1"
+        );
+      },
+    });
+
+    expect(fetchCountScope1).toBe(3);
+    expect(fetchCountScope2).toBe(1);
+    expect(fetchCountScope3).toBe(1);
+  });
+
+  it("refresh failure: active query refetch fails after create success -> success+warning visible, dialog closed, action1, pending released", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, retryDelay: 0, gcTime: 0 } },
+    });
+
+    let fetchFail = false;
+    mockedFetchCategories.mockImplementation(async () => {
+      if (fetchFail) throw new Error("Refresh failed");
+      return mockEmptyData;
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "New Category", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    function TestComponent() {
+      return <CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />;
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TestComponent />
+      </QueryClientProvider>
+    );
+
+    // Wait for initial data to load and table to be ready
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Tidak ada kategori ditemukan")).toBeInTheDocument());
+    expect(mockedFetchCategories).toHaveBeenCalledTimes(1);
+
+    // Make refresh fail BEFORE submit, so the invalidation triggered by handleSubmit will fail
+    fetchFail = true;
+
+    // Open dialog and submit
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Refresh Fail Test");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    // Wait for action to complete AND invalidation to complete
+    await waitFor(() => expect(mockCreateCategoryAction).toHaveBeenCalledTimes(1));
+
+    // Wait for the invalidation to complete (refetch fails)
+    await act(async () => { await new Promise(r => setTimeout(r, 200)); });
+
+    // Success feedback should be visible (by ID to avoid conflict with warning text)
+    await waitFor(() => expect(document.getElementById("create-category-feedback")).toBeInTheDocument());
+    expect(document.getElementById("create-category-feedback")).toHaveTextContent(/Kategori berhasil dibuat/);
+
+    // Refresh warning should be visible (set by handleSubmit catch block)
+    await waitFor(() => expect(document.getElementById("refresh-category-warning")).toBeInTheDocument());
+    expect(document.getElementById("refresh-category-warning")).toHaveTextContent(/Kategori berhasil dibuat, tetapi daftar belum diperbarui/);
+
+    // Dialog should be closed
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Action should be called exactly once
+    expect(mockCreateCategoryAction).toHaveBeenCalledTimes(1);
+
+    // Pending should be released (save button not in "Menyimpan..." state)
+    expect(screen.queryByRole("button", { name: /Menyimpan/i })).not.toBeInTheDocument();
   });
 });

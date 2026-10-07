@@ -1,12 +1,18 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act, within } from "@testing-library/react";
+import { render, screen, waitFor, act, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CategoryTable } from "@/app/dashboard/kategori/CategoryTable";
 import { CategoryListPage } from "@/app/dashboard/kategori/CategoryListPage";
 import type { CategoryAuthScope } from "@/lib/dashboard/category-query-keys";
 import { categoryKeys, INITIAL_CATEGORY_LIMIT } from "@/lib/dashboard/category-query-keys";
+
+// Mock server action boundary
+const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
+vi.mock("@/app/dashboard/menu-actions", () => ({
+  createCategoryAction: mockCreateCategoryAction,
+}));
 
 const authScope: CategoryAuthScope = { tenantId: "tenant-1", userId: "user-1" };
 const outletId = "outlet-1";
@@ -836,5 +842,834 @@ describe("CategoryTable DOM", () => {
     await userEvent.clear(searchInput);
     await waitFor(() => expect(screen.getByText("SSR Page 1")).toBeInTheDocument());
     expect(requestCount).toBe(3);
+  });
+
+  it("permission false: Tambah Kategori button not rendered", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={false} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /Tambah Kategori/i })).not.toBeInTheDocument();
+  });
+
+  it("permission true: Tambah Kategori button rendered", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Tambah Kategori/i })).toBeInTheDocument();
+  });
+
+  it("auth terminal state (401/403) does not show Tambah Kategori button", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => "application/json" },
+      json: async () => ({ code: "UNAUTHENTICATED", message: "Sesi berakhir" }),
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByText("Akses Ditolak")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /Tambah Kategori/i })).not.toBeInTheDocument();
+  });
+
+  // Create form tests
+  it("create form opens with defaults using outletId prop", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId="outlet-42" canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    const nameInput = screen.getByLabelText("Nama Kategori *") as HTMLInputElement;
+    const sortOrderInput = screen.getByLabelText("Urutan") as HTMLInputElement;
+    const isActiveCheckbox = screen.getByLabelText("Aktif") as HTMLInputElement;
+
+    expect(nameInput).toHaveValue("");
+    expect(sortOrderInput).toHaveValue(0);
+    expect(isActiveCheckbox).toBeChecked();
+  });
+
+  it("create form submit includes outletId from prop in payload", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Test", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId="outlet-99" canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Test Outlet");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(mockCreateCategoryAction).toHaveBeenCalled());
+    const payload = mockCreateCategoryAction.mock.calls[0][0];
+    expect(payload.outletId).toBe("outlet-99");
+    expect(payload.name).toBe("Test Outlet");
+  });
+
+  it("create form shows validation error for blank name", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Nama kategori wajib diisi/i)).toBeInTheDocument());
+    expect(mockCreateCategoryAction).not.toHaveBeenCalled();
+  });
+
+  it("create form shows validation error for name exceeding 80 chars", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    const nameInput = screen.getByLabelText("Nama Kategori *") as HTMLInputElement;
+    // Bypass maxlength via controlled change
+    act(() => {
+      fireEvent.change(nameInput, { target: { value: "a".repeat(81) } });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/maksimal 80 karakter/i)).toBeInTheDocument());
+  });
+
+  it("create form sortOrder blank becomes 0 on submit", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Test", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Test Sort");
+    await userEvent.clear(screen.getByLabelText("Urutan"));
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(mockCreateCategoryAction).toHaveBeenCalled());
+    const payload = mockCreateCategoryAction.mock.calls[0][0];
+    expect(payload.sortOrder).toBe(0);
+  });
+
+  it("create form duplicate name shows field error and retains input", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValueOnce({
+      ok: false,
+      code: "CATEGORY_NAME_CONFLICT",
+      message: "Nama kategori sudah digunakan di outlet ini.",
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Duplicate");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Nama kategori sudah digunakan/i)).toBeInTheDocument());
+    expect(screen.getByLabelText("Nama Kategori *")).toHaveValue("Duplicate");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("create form thrown action shows domain error and clears pending", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockRejectedValueOnce(new Error("Network error"));
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Test Throw");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Terjadi kesalahan/i)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Simpan/i })).not.toBeDisabled();
+  });
+
+  it("create form success shows feedback, resets form, closes dialog", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Success", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Success Test");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Kategori berhasil dibuat/i)).toBeInTheDocument());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Reopen dialog - form should be reset
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    expect(screen.getByLabelText("Nama Kategori *")).toHaveValue("");
+    expect(screen.getByLabelText("Urutan")).toHaveValue(0);
+    expect(screen.getByLabelText("Aktif")).toBeChecked();
+  });
+
+  // Lifecycle tests for tahap2
+  it("confirmation: false -> dialog/input retained, action 0", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Confirm False");
+
+    const originalConfirm = window.confirm;
+    const confirmSpy = vi.fn().mockReturnValue(false);
+    window.confirm = confirmSpy;
+
+    await userEvent.click(screen.getByRole("button", { name: /Batal/i }));
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).toHaveBeenCalledWith("Perubahan belum disimpan. Tutup dialog?");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nama Kategori *")).toHaveValue("Confirm False");
+    expect(mockCreateCategoryAction).not.toHaveBeenCalled();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("confirmation: true -> dialog closed/reset, action 0", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Confirm True");
+
+    const originalConfirm = window.confirm;
+    const confirmSpy = vi.fn().mockReturnValue(true);
+    window.confirm = confirmSpy;
+
+    await userEvent.click(screen.getByRole("button", { name: /Batal/i }));
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).toHaveBeenCalledWith("Perubahan belum disimpan. Tutup dialog?");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockCreateCategoryAction).not.toHaveBeenCalled();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("pending close: Batal button rejected", async () => {
+    let resolveAction: (value: unknown) => void;
+    const actionPromise = new Promise((resolve) => { resolveAction = resolve; });
+    mockCreateCategoryAction.mockReturnValueOnce(actionPromise);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Pending");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    const saveButton = screen.getByRole("button", { name: /Menyimpan/i });
+    expect(saveButton).toBeDisabled();
+
+    const batalButton = screen.getByRole("button", { name: /Batal/i });
+    await userEvent.click(batalButton);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveAction!({ ok: true, data: { id: "cat-1", name: "Pending", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" } });
+      await actionPromise;
+    });
+  });
+
+  it("pending close: Escape key rejected", async () => {
+    let resolveAction: (value: unknown) => void;
+    const actionPromise = new Promise((resolve) => { resolveAction = resolve; });
+    mockCreateCategoryAction.mockReturnValueOnce(actionPromise);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Pending Escape");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    const saveButton = screen.getByRole("button", { name: /Menyimpan/i });
+    expect(saveButton).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" });
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveAction!({ ok: true, data: { id: "cat-2", name: "Pending Escape", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" } });
+      await actionPromise;
+    });
+  });
+
+  it("pending close: outside click on overlay rejected", async () => {
+    let resolveAction: (value: unknown) => void;
+    const actionPromise = new Promise((resolve) => { resolveAction = resolve; });
+    mockCreateCategoryAction.mockReturnValueOnce(actionPromise);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Pending Outside");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    const saveButton = screen.getByRole("button", { name: /Menyimpan/i });
+    expect(saveButton).toBeDisabled();
+
+    const dialog = screen.getByRole("dialog");
+    const overlay = dialog.parentElement!;
+    await act(async () => {
+      fireEvent.pointerDown(overlay, { target: overlay, pointerType: "mouse" });
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveAction!({ ok: true, data: { id: "cat-3", name: "Pending Outside", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" } });
+      await actionPromise;
+    });
+  });
+
+  it("pending close: clean close works (control case)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    const batalButton = screen.getByRole("button", { name: /Batal/i });
+    await userEvent.click(batalButton);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("success close bypasses dirty confirmation", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Success", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Success Close");
+
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn();
+
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.confirm).not.toHaveBeenCalled();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("duplicate retains dirty protection after error", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValueOnce({
+      ok: false,
+      code: "CATEGORY_NAME_CONFLICT",
+      message: "Nama kategori sudah digunakan di outlet ini.",
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Duplicate");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Nama kategori sudah digunakan/i)).toBeInTheDocument());
+
+    // Dialog still open, dirty protection still active
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn().mockReturnValue(false);
+
+    await userEvent.click(screen.getByRole("button", { name: /Batal/i }));
+
+    expect(window.confirm).toHaveBeenCalledWith("Perubahan belum disimpan. Tutup dialog?");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nama Kategori *")).toHaveValue("Duplicate");
+
+    window.confirm = originalConfirm;
+  });
+
+  it("thrown action retains dirty protection", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockRejectedValueOnce(new Error("Network error"));
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Test Throw");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Terjadi kesalahan/i)).toBeInTheDocument());
+
+    // Dialog still open, dirty protection still active
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn().mockReturnValue(false);
+
+    await userEvent.click(screen.getByRole("button", { name: /Batal/i }));
+
+    expect(window.confirm).toHaveBeenCalledWith("Perubahan belum disimpan. Tutup dialog?");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("success close without dirty confirmation after ok===true", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Success", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Success Close");
+
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn();
+
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.confirm).not.toHaveBeenCalled();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("concurrent submit: two submits in one act, action called once before resolve", async () => {
+    let resolveAction: (value: unknown) => void;
+    const actionPromise = new Promise((resolve) => { resolveAction = resolve; });
+    mockCreateCategoryAction.mockReturnValueOnce(actionPromise);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Concurrent");
+    const form = screen.getByRole("dialog")!.querySelector("form")!;
+
+    // Dispatch two submits in single act, without waiting for disabled between
+    await act(async () => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+      // Flush validation microtasks while action still deferred
+      await Promise.resolve();
+    });
+
+    // Action should be called exactly once before resolution
+    expect(mockCreateCategoryAction).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveAction!({ ok: true, data: { id: "cat-1", name: "Concurrent", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" } });
+      await actionPromise;
+    });
+
+    // Pending should be released after resolution
+    expect(screen.queryByRole("button", { name: /Menyimpan/i })).not.toBeInTheDocument();
+  });
+
+  it("focus: clean close returns to trigger", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    const addButton = screen.getByRole("button", { name: /Tambah Kategori/i });
+    await userEvent.click(addButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    const nameInput = screen.getByLabelText("Nama Kategori *");
+    expect(nameInput).toHaveFocus();
+
+    const batalButton = screen.getByRole("button", { name: /Batal/i });
+    await userEvent.click(batalButton);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(addButton).toHaveFocus();
+  });
+
+  it("focus: dirty accept returns to trigger", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn().mockReturnValue(true);
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    const addButton = screen.getByRole("button", { name: /Tambah Kategori/i });
+    await userEvent.click(addButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Dirty Focus");
+
+    const batalButton = screen.getByRole("button", { name: /Batal/i });
+    await userEvent.click(batalButton);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(addButton).toHaveFocus();
+
+    window.confirm = originalConfirm;
+  });
+
+  it("focus: success close returns to trigger", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Focus Test", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    const addButton = screen.getByRole("button", { name: /Tambah Kategori/i });
+    await userEvent.click(addButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Focus Test");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(addButton).toHaveFocus();
+  });
+
+  it("focus: success close returns to trigger while refetch pending (slow refresh)", async () => {
+    let resolveRefetch: (value: unknown) => void;
+    const refetchPromise = new Promise((resolve) => { resolveRefetch = resolve; });
+
+    // Initial query succeeds
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    // createCategoryAction succeeds
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Slow Refresh Focus", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    // But subsequent refetch (from invalidateQueries) is deferred
+    let fetchCallCount = 0;
+    global.fetch = vi.fn().mockImplementation(async () => {
+      fetchCallCount++;
+      if (fetchCallCount === 1) {
+        return { ok: true, headers: { get: () => "application/json" }, json: async () => mockEmptyData };
+      }
+      // Second call = refetch after create - defer it
+      return refetchPromise;
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+    expect(fetchCallCount).toBe(1);
+
+    const addButton = screen.getByRole("button", { name: /Tambah Kategori/i });
+    await userEvent.click(addButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Slow Refresh Focus");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    // Wait for Dialog to close (create succeeded, invalidation triggered)
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // At this point, refetch is still pending (deferred)
+    // Trigger button should have focus even though refresh is in flight
+    expect(addButton).toHaveFocus();
+    expect(addButton).not.toBeDisabled(); // isSubmitting should be false after finally block
+
+    // Now resolve the deferred refetch
+    await act(async () => {
+      resolveRefetch!({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => mockEmptyData,
+      });
+      await refetchPromise;
+    });
+  });
+
+  it("beforeunload: clean false, open+dirty true, closed/reset false, unmounted false", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    // Initially clean - no beforeunload handler
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith("beforeunload", expect.any(Function));
+
+    // Make dirty
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Dirty");
+
+    // beforeunload should be attached
+    expect(addEventListenerSpy).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+
+    // Dispatch actual beforeunload event - clean should be false (defaultPrevented = true when dirty)
+    const beforeUnloadEvent = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(beforeUnloadEvent);
+    expect(beforeUnloadEvent.defaultPrevented).toBe(true);
+
+    // Close dialog via confirm accept - form resets, becomes clean
+    const originalConfirm = window.confirm;
+    window.confirm = vi.fn().mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: /Batal/i }));
+    window.confirm = originalConfirm;
+
+    // After close+reset, beforeunload should be removed
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("beforeunload", expect.any(Function));
+
+    // Dialog is closed, form is clean - dispatch again should not prevent default
+    const beforeUnloadEvent2 = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(beforeUnloadEvent2);
+    expect(beforeUnloadEvent2.defaultPrevented).toBe(false);
+
+    addEventListenerSpy.mockRestore();
+    removeEventListenerSpy.mockRestore();
+  });
+
+  it("beforeunload: unmounted does not leak handler", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
+    const { unmount } = renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Dirty");
+
+    unmount();
+
+    // Dispatch after unmount - handler should be cleaned up
+    const beforeUnloadEvent = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(beforeUnloadEvent);
+    expect(beforeUnloadEvent.defaultPrevented).toBe(false);
+
+    addEventListenerSpy.mockRestore();
+    removeEventListenerSpy.mockRestore();
+  });
+
+  it("success feedback inline role=status, not toast", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => mockEmptyData,
+    });
+
+    mockCreateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-new", name: "Feedback Test", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+
+    renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByLabelText("Filter kategori")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: /Tambah Kategori/i }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Nama Kategori *"), "Feedback Test");
+    await userEvent.click(screen.getByRole("button", { name: /Simpan/i }));
+
+    await waitFor(() => expect(screen.getByText(/Kategori berhasil dibuat/i)).toBeInTheDocument());
   });
 });

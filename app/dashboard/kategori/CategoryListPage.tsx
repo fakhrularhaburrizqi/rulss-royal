@@ -22,6 +22,7 @@ interface CategoryListPageProps {
     hasMore: boolean;
   };
   initialDataUpdatedAt?: number;
+  canManageCatalog?: boolean;
 }
 
 function CategoryQueryScope({
@@ -29,6 +30,7 @@ function CategoryQueryScope({
   outletId,
   initialData,
   initialDataUpdatedAt,
+  canManageCatalog,
 }: CategoryListPageProps) {
   const [queryClient] = useState(
     () =>
@@ -51,6 +53,7 @@ function CategoryQueryScope({
         outletId={outletId}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
+        canManageCatalog={canManageCatalog}
       />
     </QueryClientProvider>
   );
@@ -61,6 +64,7 @@ export function CategoryListPage({
   outletId,
   initialData,
   initialDataUpdatedAt,
+  canManageCatalog = false,
 }: CategoryListPageProps) {
   const scopeKey = JSON.stringify([authScope.tenantId, authScope.userId, outletId]);
 
@@ -71,6 +75,7 @@ export function CategoryListPage({
       outletId={outletId}
       initialData={initialData}
       initialDataUpdatedAt={initialDataUpdatedAt}
+      canManageCatalog={canManageCatalog}
     />
   );
 }
