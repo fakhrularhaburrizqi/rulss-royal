@@ -60,10 +60,14 @@ const mockData: PaginatedCategoriesResult = {
 // Mock the server actions using vi.hoisted
 const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
 const mockUpdateCategoryAction = vi.hoisted(() => vi.fn());
+const mockArchiveCategoryAction = vi.hoisted(() => vi.fn());
+const mockRestoreCategoryAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@/app/dashboard/menu-actions", () => ({
   createCategoryAction: mockCreateCategoryAction,
   updateCategoryAction: mockUpdateCategoryAction,
+  archiveCategoryAction: mockArchiveCategoryAction,
+  restoreCategoryAction: mockRestoreCategoryAction,
 }));
 
 function renderWithProvider(ui: React.ReactElement) {

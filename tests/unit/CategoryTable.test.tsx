@@ -13,9 +13,13 @@ import type { PaginatedCategoriesResult } from "@/lib/services/menu-category-que
 // Mock server action boundary
 const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
 const mockUpdateCategoryAction = vi.hoisted(() => vi.fn());
+const mockArchiveCategoryAction = vi.hoisted(() => vi.fn());
+const mockRestoreCategoryAction = vi.hoisted(() => vi.fn());
 vi.mock("@/app/dashboard/menu-actions", () => ({
   createCategoryAction: mockCreateCategoryAction,
   updateCategoryAction: mockUpdateCategoryAction,
+  archiveCategoryAction: mockArchiveCategoryAction,
+  restoreCategoryAction: mockRestoreCategoryAction,
 }));
 
 const authScope: CategoryAuthScope = { tenantId: "tenant-1", userId: "user-1" };
@@ -110,6 +114,14 @@ describe("CategoryTable DOM", () => {
     mockUpdateCategoryAction.mockResolvedValue({
       ok: true,
       data: { id: "cat-1", name: "Updated", sortOrder: 5, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+    mockArchiveCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" },
+    });
+    mockRestoreCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-4", name: "Dessert", sortOrder: 3, isActive: true, deletedAt: null, updatedAt: "2026-01-02T00:00:00.000Z" },
     });
   });
 
@@ -3189,6 +3201,968 @@ describe("CategoryTable DOM", () => {
       expect(confirmSpy).not.toHaveBeenCalled();
       expect(mockUpdateCategoryAction).not.toHaveBeenCalled();
 
+      confirmSpy.mockRestore();
+    });
+  });
+
+  describe("Archive / Restore Category", () => {
+    const archivePayload = {
+      outletId: "outlet-1",
+      categoryId: "cat-1",
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    const restorePayload = {
+      outletId: "outlet-1",
+      categoryId: "cat-4",
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    const renderMockedTable = () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => mockData,
+      });
+      return renderWithProvider(
+        <CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />
+      );
+    };
+
+    it("permission false: archive/restore actions not rendered", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => mockData,
+      });
+
+      renderWithProvider(
+        <CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={false} />
+      );
+      await waitFor(() => expect(screen.getByText("Makanan")).toBeInTheDocument());
+
+      expect(screen.queryByRole("button", { name: "Arsip Makanan" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Pulihkan Dessert" })).not.toBeInTheDocument();
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("auth terminal (403): archive/restore actions not rendered", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        headers: { get: () => "application/json" },
+        json: async () => ({ code: "OUTLET_ACCESS_DENIED", message: "Forbidden" }),
+      });
+
+      renderWithProvider(
+        <CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />
+      );
+      await waitFor(() => expect(screen.getByText("Akses Ditolak")).toBeInTheDocument());
+
+      expect(
+        screen.queryByRole("button", { name: /Arsip |Pulihkan |Edit / })
+      ).not.toBeInTheDocument();
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("deletedAt-based actions: Arsip on live rows, Pulihkan on archived row", async () => {
+      renderMockedTable();
+      await screen.findByRole("button", { name: "Arsip Makanan" });
+
+      expect(screen.getAllByRole("button", { name: /^Arsip / })).toHaveLength(3);
+      expect(screen.getByRole("button", { name: "Pulihkan Dessert" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Pulihkan Makanan" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Arsip Dessert" })).not.toBeInTheDocument();
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("archive confirmation: accessible title, category name, backend-matched impact copy", async () => {
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Arsip Makanan" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+      expect(
+        within(dialog).getByText(/Tandai kategori "Makanan" sebagai arsip\./)
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText("Kategori ditandai arsip.")).toBeInTheDocument();
+      expect(within(dialog).getByText("Item menu tidak dihapus.")).toBeInTheDocument();
+      expect(within(dialog).getByText("Status Aktif kategori tidak berubah.")).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Arsipkan" })).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Batal" })).toBeInTheDocument();
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("restore confirmation: accessible title, category name, backend-matched impact copy", async () => {
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Pulihkan Dessert" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "Pulihkan Kategori" });
+      expect(
+        within(dialog).getByText(/Batalkan arsip kategori "Dessert"\./)
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText("Arsip dibatalkan tanpa mengubah status Aktif.")
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText("Pemulihan dapat gagal karena konflik nama.")
+      ).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Pulihkan" })).toBeInTheDocument();
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("archive cancel: Batal closes confirmation, action 0, no feedback", async () => {
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Arsip Makanan" }));
+      const dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+      expect(screen.queryByText("Kategori berhasil diarsipkan")).not.toBeInTheDocument();
+      expect(screen.queryByText("Kategori berhasil dipulihkan")).not.toBeInTheDocument();
+    });
+
+    it("archive success: exact payload, archive 1 and restore 0, close with feedback", async () => {
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Arsip Makanan" }));
+      const dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Arsipkan" }));
+
+      await waitFor(() => expect(mockArchiveCategoryAction).toHaveBeenCalledTimes(1));
+      expect(mockArchiveCategoryAction).toHaveBeenCalledWith(archivePayload);
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(screen.getByText("Kategori berhasil diarsipkan")).toBeInTheDocument();
+    });
+
+    it("restore success: exact payload, restore 1 and archive 0, close with feedback", async () => {
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Pulihkan Dessert" }));
+      const dialog = await screen.findByRole("dialog", { name: "Pulihkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Pulihkan" }));
+
+      await waitFor(() => expect(mockRestoreCategoryAction).toHaveBeenCalledTimes(1));
+      expect(mockRestoreCategoryAction).toHaveBeenCalledWith(restorePayload);
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(screen.getByText("Kategori berhasil dipulihkan")).toBeInTheDocument();
+    });
+
+    it("archive domain error: inline message, dialog and snapshot retained, pending released, no auto-retry", async () => {
+      mockArchiveCategoryAction.mockResolvedValue({
+        ok: false,
+        code: "CATALOG_STATE_CONFLICT",
+        message: "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
+      });
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Arsip Makanan" }));
+      const dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Arsipkan" }));
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+          "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru."
+        )
+      );
+      expect(mockArchiveCategoryAction).toHaveBeenCalledTimes(1);
+      expect(within(dialog).getByRole("button", { name: "Arsipkan" })).toBeEnabled();
+      expect(screen.getByRole("dialog", { name: "Arsipkan Kategori" })).toBeInTheDocument();
+      expect(screen.queryByText("Kategori berhasil diarsipkan")).not.toBeInTheDocument();
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Arsipkan" }));
+      await waitFor(() => expect(mockArchiveCategoryAction).toHaveBeenCalledTimes(2));
+      expect(mockArchiveCategoryAction.mock.calls[0][0]).toEqual(archivePayload);
+      expect(mockArchiveCategoryAction.mock.calls[1][0]).toEqual(archivePayload);
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("restore domain error: name conflict inline, dialog retained, restore 1 and archive 0", async () => {
+      mockRestoreCategoryAction.mockResolvedValue({
+        ok: false,
+        code: "CATEGORY_NAME_CONFLICT",
+        message: "Nama kategori sudah digunakan di outlet ini.",
+      });
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Pulihkan Dessert" }));
+      const dialog = await screen.findByRole("dialog", { name: "Pulihkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Pulihkan" }));
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+          "Nama kategori sudah digunakan di outlet ini."
+        )
+      );
+      expect(screen.getByRole("dialog", { name: "Pulihkan Kategori" })).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Pulihkan" })).toBeEnabled();
+      expect(mockRestoreCategoryAction).toHaveBeenCalledTimes(1);
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(screen.queryByText("Kategori berhasil dipulihkan")).not.toBeInTheDocument();
+    });
+
+    it("thrown action: generic message, dialog retained, pending released", async () => {
+      mockRestoreCategoryAction.mockRejectedValue(new Error("network down"));
+      renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: "Pulihkan Dessert" }));
+      const dialog = await screen.findByRole("dialog", { name: "Pulihkan Kategori" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Pulihkan" }));
+
+      await waitFor(() =>
+        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+          "Terjadi kesalahan. Silakan coba lagi."
+        )
+      );
+      expect(screen.getByRole("dialog", { name: "Pulihkan Kategori" })).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Pulihkan" })).toBeEnabled();
+      expect(mockRestoreCategoryAction).toHaveBeenCalledTimes(1);
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+    });
+
+    const modeCases = [
+      {
+        key: "archive",
+        rowButtonName: "Arsip Makanan",
+        rowName: "Makanan",
+        categoryId: "cat-1",
+        dialogName: "Arsipkan Kategori",
+        confirmName: "Arsipkan",
+        pendingName: "Mengarsipkan...",
+        successText: "Kategori berhasil diarsipkan",
+        action: () => mockArchiveCategoryAction,
+        opposite: () => mockRestoreCategoryAction,
+        successData: {
+          id: "cat-1",
+          name: "Makanan",
+          sortOrder: 0,
+          isActive: true,
+          deletedAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+        warningText: "Kategori berhasil diarsipkan, tetapi daftar belum diperbarui.",
+        recoveryButtonName: "Pulihkan Makanan",
+        removalFilter: "active",
+        removalBefore: [
+          { id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+          { id: "cat-2", name: "Minuman", sortOrder: 1, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        removalAfter: [
+          { id: "cat-2", name: "Minuman", sortOrder: 1, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        failureBefore: [
+          { id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        failureAfter: [
+          { id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" },
+        ],
+      },
+      {
+        key: "restore",
+        rowButtonName: "Pulihkan Dessert",
+        rowName: "Dessert",
+        categoryId: "cat-4",
+        dialogName: "Pulihkan Kategori",
+        confirmName: "Pulihkan",
+        pendingName: "Memulihkan...",
+        successText: "Kategori berhasil dipulihkan",
+        action: () => mockRestoreCategoryAction,
+        opposite: () => mockArchiveCategoryAction,
+        successData: {
+          id: "cat-4",
+          name: "Dessert",
+          sortOrder: 3,
+          isActive: true,
+          deletedAt: null,
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+        warningText: "Kategori berhasil dipulihkan, tetapi daftar belum diperbarui.",
+        recoveryButtonName: "Arsip Dessert",
+        removalFilter: "archived",
+        removalBefore: [
+          { id: "cat-4", name: "Dessert", sortOrder: 3, isActive: true, deletedAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        removalAfter: [] as Array<{ id: string; name: string; sortOrder: number; isActive: boolean; deletedAt: string | null; updatedAt: string }>,
+        failureBefore: [
+          { id: "cat-4", name: "Dessert", sortOrder: 3, isActive: true, deletedAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        failureAfter: [
+          { id: "cat-4", name: "Dessert", sortOrder: 3, isActive: true, deletedAt: null, updatedAt: "2026-01-02T00:00:00.000Z" },
+        ],
+      },
+    ];
+
+    type ModeCase = (typeof modeCases)[number];
+
+    const snapshotPayload = (c: ModeCase) => ({
+      outletId: "outlet-1",
+      categoryId: c.categoryId,
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const openConfirmation = async (c: ModeCase) => {
+      const view = renderMockedTable();
+      await userEvent.click(await screen.findByRole("button", { name: c.rowButtonName }));
+      const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+      return { dialog, view };
+    };
+
+    it.each(modeCases)(
+      "pending state ($key): pending label shown, confirm and Batal disabled, action 1, opposite 0",
+      async (c) => {
+        const { promise, resolve } = deferred<unknown>();
+        c.action().mockReturnValueOnce(promise);
+
+        const { dialog } = await openConfirmation(c);
+        await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+        await waitFor(() => expect(c.action()).toHaveBeenCalledTimes(1));
+        const pendingDialog = screen.getByRole("dialog", { name: c.dialogName });
+        expect(
+          within(pendingDialog).getByRole("button", { name: c.pendingName })
+        ).toBeDisabled();
+        expect(
+          within(pendingDialog).queryByRole("button", { name: c.confirmName })
+        ).not.toBeInTheDocument();
+        expect(within(pendingDialog).getByRole("button", { name: "Batal" })).toBeDisabled();
+        expect(c.opposite()).not.toHaveBeenCalled();
+
+        await act(async () => {
+          resolve({ ok: true, data: c.successData });
+          await promise;
+        });
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(c.action()).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    const closeKinds = ["batal", "close-x", "escape", "outside-pointer"] as const;
+
+    modeCases.forEach((c) => {
+      closeKinds.forEach((kind) => {
+        it(`pending close ${kind} (${c.key}): dialog and name retained, action 1, opposite 0, window.confirm 0`, async () => {
+          const { promise, resolve } = deferred<unknown>();
+          c.action().mockReturnValueOnce(promise);
+          const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+          const { dialog } = await openConfirmation(c);
+          await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+          await waitFor(() => expect(c.action()).toHaveBeenCalledTimes(1));
+          const pendingDialog = screen.getByRole("dialog", { name: c.dialogName });
+          expect(
+            within(pendingDialog).getByRole("button", { name: c.pendingName })
+          ).toBeDisabled();
+
+          if (kind === "batal") {
+            fireEvent.click(within(pendingDialog).getByRole("button", { name: "Batal" }));
+          } else if (kind === "close-x") {
+            const closeButton = within(pendingDialog).getByRole("button", { name: "Close" });
+            expect(closeButton).toBeInTheDocument();
+            await userEvent.click(closeButton);
+          } else if (kind === "escape") {
+            await act(async () => {
+              await userEvent.keyboard("{Escape}");
+            });
+          } else {
+            const portal = pendingDialog.parentElement!;
+            const overlay = portal.firstElementChild as HTMLElement;
+            expect(overlay).not.toBeNull();
+            expect(overlay).not.toBe(pendingDialog);
+
+            await act(async () => {
+              fireEvent.pointerDown(overlay, { target: overlay, pointerType: "mouse" });
+              await Promise.resolve();
+            });
+          }
+
+          const retained = screen.getByRole("dialog", { name: c.dialogName });
+          expect(retained).toBeInTheDocument();
+          expect(within(retained).getByText(new RegExp(c.rowName))).toBeInTheDocument();
+          expect(within(retained).getByRole("button", { name: c.pendingName })).toBeDisabled();
+          expect(confirmSpy).not.toHaveBeenCalled();
+          expect(c.action()).toHaveBeenCalledTimes(1);
+          expect(c.opposite()).not.toHaveBeenCalled();
+
+          confirmSpy.mockRestore();
+
+          await act(async () => {
+            resolve({ ok: true, data: c.successData });
+            await promise;
+          });
+          await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+          expect(c.action()).toHaveBeenCalledTimes(1);
+        });
+      });
+    });
+
+    it.each(modeCases)(
+      "outside pointer control ($key): same overlay/event sequence closes dialog when not pending",
+      async (c) => {
+        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+        const { dialog } = await openConfirmation(c);
+
+        const portal = dialog.parentElement!;
+        const overlay = portal.firstElementChild as HTMLElement;
+        expect(overlay).not.toBeNull();
+        expect(overlay).not.toBe(dialog);
+
+        await act(async () => {
+          fireEvent.pointerDown(overlay, { target: overlay, pointerType: "mouse" });
+          await Promise.resolve();
+        });
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(c.action()).not.toHaveBeenCalled();
+        expect(c.opposite()).not.toHaveBeenCalled();
+
+        confirmSpy.mockRestore();
+      }
+    );
+
+    it.each(modeCases)(
+      "concurrent confirm ($key): two confirm clicks in one act, action 1 before resolve, success close after",
+      async (c) => {
+        const { promise, resolve } = deferred<unknown>();
+        c.action().mockReturnValueOnce(promise);
+
+        const { dialog } = await openConfirmation(c);
+        const confirmButton = within(dialog).getByRole("button", { name: c.confirmName });
+
+        await act(async () => {
+          fireEvent.click(confirmButton);
+          fireEvent.click(confirmButton);
+          await Promise.resolve();
+        });
+
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        expect(c.opposite()).not.toHaveBeenCalled();
+
+        await act(async () => {
+          resolve({ ok: true, data: c.successData });
+          await promise;
+        });
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(c.successText)).toBeInTheDocument());
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        expect(c.opposite()).not.toHaveBeenCalled();
+      }
+    );
+
+    it("beforeunload: archive confirmation open -> false, then closed -> false", async () => {
+      const { dialog } = await openConfirmation(modeCases[0]);
+
+      const openEvent = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(openEvent);
+      expect(openEvent.defaultPrevented).toBe(false);
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      const closedEvent = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(closedEvent);
+      expect(closedEvent.defaultPrevented).toBe(false);
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it("beforeunload: restore confirmation open -> false, then unmounted -> false", async () => {
+      const { view } = await openConfirmation(modeCases[1]);
+
+      const openEvent = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(openEvent);
+      expect(openEvent.defaultPrevented).toBe(false);
+
+      view.unmount();
+
+      const unmountedEvent = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(unmountedEvent);
+      expect(unmountedEvent.defaultPrevented).toBe(false);
+      expect(mockArchiveCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+    });
+
+    it.each(modeCases)(
+      "beforeunload transition ($key): dirty edit confirm-accept close -> confirmation open -> event not prevented",
+      async (c) => {
+        renderMockedTable();
+        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+        await userEvent.click(await screen.findByRole("button", { name: "Edit Makanan" }));
+        const editDialog = await screen.findByRole("dialog", { name: "Edit Kategori" });
+        await userEvent.type(
+          within(editDialog).getByLabelText("Nama Kategori *"),
+          "Dirty Switch"
+        );
+
+        const dirtyEvent = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(dirtyEvent);
+        expect(dirtyEvent.defaultPrevented).toBe(true);
+
+        await userEvent.click(within(editDialog).getByRole("button", { name: "Batal" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(confirmSpy).toHaveBeenCalledTimes(1);
+
+        const closedEvent = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(closedEvent);
+        expect(closedEvent.defaultPrevented).toBe(false);
+
+        await userEvent.click(await screen.findByRole("button", { name: c.rowButtonName }));
+        await screen.findByRole("dialog", { name: c.dialogName });
+
+        const openEvent = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(openEvent);
+        expect(openEvent.defaultPrevented).toBe(false);
+
+        expect(c.action()).not.toHaveBeenCalled();
+        confirmSpy.mockRestore();
+      }
+    );
+
+    const errorKinds = [
+      {
+        kind: "CATALOG_VERSION_CONFLICT",
+        thrown: false,
+        message: "Data katalog telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
+      },
+      {
+        kind: "CATEGORY_NOT_FOUND",
+        thrown: false,
+        message: "Kategori tidak ditemukan.",
+      },
+      {
+        kind: "THROWN",
+        thrown: true,
+        message: "Terjadi kesalahan. Silakan coba lagi.",
+      },
+    ];
+
+    modeCases.forEach((c) => {
+      errorKinds.forEach((e) => {
+        it(`error preservation (${c.key}, ${e.kind}): action 1, inline error, dialog/name retained, snapshot payload, pending released`, async () => {
+          if (e.thrown) {
+            c.action().mockRejectedValue(new Error("network down"));
+          } else {
+            c.action().mockResolvedValue({ ok: false, code: e.kind, message: e.message });
+          }
+
+          const { dialog } = await openConfirmation(c);
+          await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+          await waitFor(() =>
+            expect(
+              within(screen.getByRole("dialog", { name: c.dialogName })).getByRole("alert")
+            ).toHaveTextContent(e.message)
+          );
+
+          const retained = screen.getByRole("dialog", { name: c.dialogName });
+          expect(retained).toBeInTheDocument();
+          expect(within(retained).getByText(new RegExp(c.rowName))).toBeInTheDocument();
+          expect(within(retained).getByRole("button", { name: c.confirmName })).toBeEnabled();
+          expect(c.action()).toHaveBeenCalledTimes(1);
+          expect(c.opposite()).not.toHaveBeenCalled();
+          expect(c.action()).toHaveBeenCalledWith(snapshotPayload(c));
+          expect(Object.keys(c.action().mock.calls[0][0])).toEqual([
+            "outletId",
+            "categoryId",
+            "expectedUpdatedAt",
+          ]);
+          expect(screen.queryByText(c.successText)).not.toBeInTheDocument();
+        });
+      });
+    });
+
+    it.each(modeCases)(
+      "scoped refresh ($key): confirmation submit refetches matching tenant/user/outlet variants only",
+      async (c) => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false, retryDelay: 0, gcTime: 0 } },
+        });
+
+        global.fetch = vi.fn().mockImplementation(async () => ({
+          ok: true,
+          headers: { get: () => "application/json" },
+          json: async () => mockData,
+        }));
+
+        const fetchStarts = new Map<string, number>();
+        const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
+          if (event.type === "updated" && event.action.type === "fetch") {
+            fetchStarts.set(event.query.queryHash, (fetchStarts.get(event.query.queryHash) ?? 0) + 1);
+          }
+        });
+
+        const tableKey = categoryKeys().list(authScope, {
+          outletId,
+          filter: "all",
+          search: undefined,
+          limit: INITIAL_CATEGORY_LIMIT,
+          cursor: undefined,
+        });
+        const variantFilterKey = categoryKeys().list(authScope, {
+          outletId,
+          filter: "active",
+          search: undefined,
+          limit: INITIAL_CATEGORY_LIMIT,
+          cursor: undefined,
+        });
+        const variantSearchKey = categoryKeys().list(authScope, {
+          outletId,
+          filter: "all",
+          search: "nasi",
+          limit: INITIAL_CATEGORY_LIMIT,
+          cursor: undefined,
+        });
+        const otherOutletKey = categoryKeys().list(authScope, {
+          outletId: "outlet-2",
+          filter: "all",
+          search: undefined,
+          limit: INITIAL_CATEGORY_LIMIT,
+          cursor: undefined,
+        });
+        const otherTenantKey = categoryKeys().list(
+          { tenantId: "tenant-2", userId: authScope.userId },
+          { outletId, filter: "all", search: undefined, limit: INITIAL_CATEGORY_LIMIT, cursor: undefined }
+        );
+        const otherUserKey = categoryKeys().list(
+          { tenantId: authScope.tenantId, userId: "user-2" },
+          { outletId, filter: "all", search: undefined, limit: INITIAL_CATEGORY_LIMIT, cursor: undefined }
+        );
+        const unrelatedPrefixKey = ["other", "prefix", { authScope, outletId }] as const;
+        const malformedKey = ["categories", "list", { authScope: null, outletId }] as const;
+
+        function Probe({ queryKey, outlet }: { queryKey: ReadonlyArray<unknown>; outlet: string }) {
+          useQuery({
+            queryKey,
+            queryFn: () => fetchCategories({ outlet, filter: "all", limit: INITIAL_CATEGORY_LIMIT }),
+            retry: false,
+            staleTime: 1000 * 60 * 5,
+            gcTime: 1000 * 60 * 10,
+            refetchOnWindowFocus: false,
+          });
+          return null;
+        }
+
+        const tracked: Array<{ label: string; key: ReadonlyArray<unknown>; matching: boolean }> = [
+          { label: "table-initial", key: tableKey, matching: true },
+          { label: "matching-variant-filter-active", key: variantFilterKey, matching: true },
+          { label: "matching-variant-search", key: variantSearchKey, matching: true },
+          { label: "other-outlet", key: otherOutletKey, matching: false },
+          { label: "other-tenant", key: otherTenantKey, matching: false },
+          { label: "other-user", key: otherUserKey, matching: false },
+          { label: "unrelated-prefix", key: unrelatedPrefixKey, matching: false },
+          { label: "malformed-key", key: malformedKey, matching: false },
+        ];
+
+        render(
+          <QueryClientProvider client={queryClient}>
+            <CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />
+            <Probe queryKey={variantFilterKey} outlet={outletId} />
+            <Probe queryKey={variantSearchKey} outlet={outletId} />
+            <Probe queryKey={otherOutletKey} outlet="outlet-2" />
+            <Probe queryKey={otherTenantKey} outlet={outletId} />
+            <Probe queryKey={otherUserKey} outlet={outletId} />
+            <Probe queryKey={unrelatedPrefixKey} outlet={outletId} />
+            <Probe queryKey={malformedKey} outlet={outletId} />
+          </QueryClientProvider>
+        );
+
+        const findQuery = (key: ReadonlyArray<unknown>) =>
+          queryClient.getQueryCache().getAll().find((q) => JSON.stringify(q.queryKey) === JSON.stringify(key));
+
+        await waitFor(() => {
+          expect(screen.getByText("Makanan")).toBeInTheDocument();
+          for (const entry of tracked) {
+            const query = findQuery(entry.key);
+            expect(query, entry.label).toBeDefined();
+            expect(query!.state.status, entry.label).toBe("success");
+            expect(query!.state.fetchStatus, entry.label).toBe("idle");
+          }
+        });
+
+        const baseline = tracked.map((entry) => {
+          const query = findQuery(entry.key)!;
+          return { ...entry, hash: query.queryHash, count: fetchStarts.get(query.queryHash) ?? 0 };
+        });
+
+        await userEvent.click(await screen.findByRole("button", { name: c.rowButtonName }));
+        const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+        await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+        await waitFor(() => expect(c.action()).toHaveBeenCalledTimes(1));
+        expect(c.action()).toHaveBeenCalledWith(snapshotPayload(c));
+        expect(Object.keys(c.action().mock.calls[0][0])).toEqual([
+          "outletId",
+          "categoryId",
+          "expectedUpdatedAt",
+        ]);
+        expect(c.opposite()).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        await waitFor(() => {
+          for (const entry of baseline.filter((e) => e.matching)) {
+            expect(fetchStarts.get(entry.hash) ?? 0, entry.label).toBe(entry.count + 1);
+          }
+        });
+
+        for (const entry of baseline.filter((e) => !e.matching)) {
+          expect(fetchStarts.get(entry.hash) ?? 0, entry.label).toBe(entry.count);
+        }
+
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        unsubscribeCache();
+      }
+    );
+
+    it.each(modeCases)(
+      "focus cancel ($key): Batal closes and returns focus to the clicked row trigger",
+      async (c) => {
+        renderMockedTable();
+        await userEvent.click(await screen.findByRole("button", { name: c.rowButtonName }));
+        const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+
+        await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        expect(screen.getByRole("button", { name: c.rowButtonName })).toHaveFocus();
+        expect(c.action()).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(modeCases)(
+      "focus/lock ($key): success close focuses trigger, reopen rejected until slow refresh finishes",
+      async (c) => {
+        const { promise: refetchPromise, resolve: resolveRefetch } = deferred<unknown>();
+
+        let fetchCallCount = 0;
+        global.fetch = vi.fn().mockImplementation(async () => {
+          fetchCallCount++;
+          if (fetchCallCount === 1) {
+            return { ok: true, headers: { get: () => "application/json" }, json: async () => mockData };
+          }
+          return refetchPromise;
+        });
+
+        renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+        await waitFor(() => expect(screen.getByText("Makanan")).toBeInTheDocument());
+        expect(fetchCallCount).toBe(1);
+
+        const rowTrigger = await screen.findByRole("button", { name: c.rowButtonName });
+        await userEvent.click(rowTrigger);
+        const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+        await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+        await waitFor(() => expect(c.action()).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        expect(rowTrigger).toHaveFocus();
+        expect(rowTrigger).not.toBeDisabled();
+
+        await userEvent.click(rowTrigger);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(c.action()).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          resolveRefetch({
+            ok: true,
+            headers: { get: () => "application/json" },
+            json: async () => mockData,
+          });
+          await refetchPromise;
+        });
+        await waitFor(() => expect(fetchCallCount).toBeGreaterThanOrEqual(2));
+
+        await userEvent.click(screen.getByRole("button", { name: c.rowButtonName }));
+        const reopened = await screen.findByRole("dialog", { name: c.dialogName });
+        expect(screen.getAllByRole("dialog")).toHaveLength(1);
+        expect(within(reopened).getByText(new RegExp(c.rowName))).toBeInTheDocument();
+
+        await userEvent.click(within(reopened).getByRole("button", { name: "Batal" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        expect(c.opposite()).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(modeCases)(
+      "focus fallback ($key): filtered refresh removes row, focus falls back to Tambah Kategori",
+      async (c) => {
+        type FixtureRow = {
+          id: string;
+          name: string;
+          sortOrder: number;
+          isActive: boolean;
+          deletedAt: string | null;
+          updatedAt: string;
+        };
+        let rows: FixtureRow[] = c.removalBefore;
+
+        global.fetch = vi.fn().mockImplementation(async (input: unknown) => {
+          const url = new URL(String(input), "http://localhost");
+          const filter = url.searchParams.get("filter") ?? "all";
+          const body =
+            filter === c.removalFilter
+              ? { data: rows, nextCursor: null, hasMore: false }
+              : mockData;
+          return { ok: true, headers: { get: () => "application/json" }, json: async () => body };
+        });
+
+        renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+        const filterSelect = (await screen.findByLabelText("Filter kategori")) as HTMLSelectElement;
+        await userEvent.selectOptions(filterSelect, c.removalFilter);
+        await screen.findByRole("button", { name: c.rowButtonName });
+
+        await userEvent.click(screen.getByRole("button", { name: c.rowButtonName }));
+        const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+
+        rows = c.removalAfter;
+
+        await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+        await waitFor(() => expect(c.action()).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        await waitFor(() =>
+          expect(screen.queryByRole("button", { name: c.rowButtonName })).not.toBeInTheDocument()
+        );
+
+        expect(screen.getByRole("button", { name: "Tambah Kategori" })).toHaveFocus();
+        expect(c.opposite()).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(modeCases)(
+      "refresh failure ($key): success and warning visible, lock released, Coba Lagi recovery without repeat mutation",
+      async (c) => {
+        type FixtureRow = {
+          id: string;
+          name: string;
+          sortOrder: number;
+          isActive: boolean;
+          deletedAt: string | null;
+          updatedAt: string;
+        };
+        let rows: FixtureRow[] = c.failureBefore;
+        let refreshFails = false;
+
+        global.fetch = vi.fn().mockImplementation(async () => {
+          if (refreshFails) {
+            throw new Error("Refresh failed");
+          }
+          return {
+            ok: true,
+            headers: { get: () => "application/json" },
+            json: async () => ({ data: rows, nextCursor: null, hasMore: false }),
+          };
+        });
+
+        renderWithProvider(<CategoryTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+        await screen.findByRole("button", { name: c.rowButtonName });
+
+        refreshFails = true;
+        await userEvent.click(screen.getByRole("button", { name: c.rowButtonName }));
+        const dialog = await screen.findByRole("dialog", { name: c.dialogName });
+        await userEvent.click(within(dialog).getByRole("button", { name: c.confirmName }));
+
+        await waitFor(() => expect(screen.getByText(c.successText)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(c.warningText)).toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText("Gagal Memuat")).toBeInTheDocument());
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        expect(c.opposite()).not.toHaveBeenCalled();
+
+        await userEvent.click(screen.getByRole("button", { name: "Tambah Kategori" }));
+        expect(screen.getAllByRole("dialog")).toHaveLength(1);
+        expect(screen.getByRole("dialog", { name: "Tambah Kategori" })).toBeInTheDocument();
+        await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Batal" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(mockCreateCategoryAction).not.toHaveBeenCalled();
+
+        refreshFails = false;
+        rows = c.failureAfter;
+        await userEvent.click(screen.getByRole("button", { name: "Coba Lagi" }));
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: c.recoveryButtonName })).toBeInTheDocument()
+        );
+        expect(c.action()).toHaveBeenCalledTimes(1);
+        expect(c.opposite()).not.toHaveBeenCalled();
+      }
+    );
+
+    it("single active dialog: create, edit, archive error, restore - one dialog per state, no leak", async () => {
+      renderMockedTable();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+      await screen.findByRole("button", { name: "Edit Makanan" });
+
+      await userEvent.click(screen.getByRole("button", { name: "Tambah Kategori" }));
+      let dialog = await screen.findByRole("dialog", { name: "Tambah Kategori" });
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(within(dialog).getByLabelText("Nama Kategori *")).toHaveValue("");
+      expect(within(dialog).getByLabelText("Urutan")).toHaveValue(0);
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      await userEvent.click(screen.getByRole("button", { name: "Edit Makanan" }));
+      dialog = await screen.findByRole("dialog", { name: "Edit Kategori" });
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(confirmSpy).not.toHaveBeenCalled();
+
+      mockArchiveCategoryAction.mockResolvedValue({
+        ok: false,
+        code: "CATALOG_STATE_CONFLICT",
+        message: "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Arsip Makanan" }));
+      dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(within(dialog).getByText(/Tandai kategori "Makanan" sebagai arsip\./)).toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Arsipkan" }));
+      await waitFor(() =>
+        expect(
+          within(screen.getByRole("dialog", { name: "Arsipkan Kategori" })).getByRole("alert")
+        ).toHaveTextContent("Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.")
+      );
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      await userEvent.click(
+        within(screen.getByRole("dialog", { name: "Arsipkan Kategori" })).getByRole("button", {
+          name: "Batal",
+        })
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      await userEvent.click(screen.getByRole("button", { name: "Pulihkan Dessert" }));
+      dialog = await screen.findByRole("dialog", { name: "Pulihkan Kategori" });
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(within(dialog).getByText(/Batalkan arsip kategori "Dessert"\./)).toBeInTheDocument();
+      expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      await userEvent.click(screen.getByRole("button", { name: "Arsip Makanan" }));
+      dialog = await screen.findByRole("dialog", { name: "Arsipkan Kategori" });
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(within(dialog).getByText(/Tandai kategori "Makanan" sebagai arsip\./)).toBeInTheDocument();
+      expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Batal" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(screen.queryByText("Kategori berhasil diarsipkan")).not.toBeInTheDocument();
+      expect(mockCreateCategoryAction).not.toHaveBeenCalled();
+      expect(mockUpdateCategoryAction).not.toHaveBeenCalled();
+      expect(mockRestoreCategoryAction).not.toHaveBeenCalled();
+      expect(mockArchiveCategoryAction).toHaveBeenCalledTimes(1);
       confirmSpy.mockRestore();
     });
   });

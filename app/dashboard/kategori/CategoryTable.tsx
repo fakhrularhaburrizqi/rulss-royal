@@ -6,13 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import type { CategoryAuthScope } from "@/lib/dashboard/category-query-keys";
-import { createCategoryAction, updateCategoryAction } from "@/app/dashboard/menu-actions";
+import { archiveCategoryAction, createCategoryAction, restoreCategoryAction, updateCategoryAction } from "@/app/dashboard/menu-actions";
 import { categoryCreateSchema, categoryUpdateSchema, type CategoryCreateInput, type CategoryUpdateInput } from "@/lib/validators/menu.validator";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { CategoryCreateDialog } from "./CategoryCreateDialog";
 import { CategoryEditDialog } from "./CategoryEditDialog";
+import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 
 interface CategoryTableProps {
   authScope: CategoryAuthScope;
@@ -88,7 +89,7 @@ export function CategoryTable({
     : "Gagal memuat kategori. Silakan coba lagi.";
 
   // Dialog mode state
-  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit">("closed");
+  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit" | "archive" | "restore">("closed");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [domainError, setDomainError] = useState<string | null>(null);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export function CategoryTable({
   const queryClient = useQueryClient();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const editTriggerRef = useRef<HTMLButtonElement>(null);
+  const archiveTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Snapshot for edit mode
   const [editSnapshot, setEditSnapshot] = useState<{
@@ -103,6 +105,14 @@ export function CategoryTable({
     name: string;
     sortOrder: number;
     isActive: boolean;
+    deletedAt: string | null;
+    updatedAt: string;
+  } | null>(null);
+
+  // Snapshot for archive/restore mode
+  const [archiveSnapshot, setArchiveSnapshot] = useState<{
+    id: string;
+    name: string;
     deletedAt: string | null;
     updatedAt: string;
   } | null>(null);
@@ -136,6 +146,7 @@ export function CategoryTable({
 
   // beforeunload handler for dirty form - single owner in CategoryTable
   useEffect(() => {
+    if (dialogMode !== "create" && dialogMode !== "edit") return;
     const form = dialogMode === "create" ? createForm : editForm;
     const isDirty = form.formState.isDirty;
     if (!isDirty) return;
@@ -149,13 +160,14 @@ export function CategoryTable({
 
   const handleOpenCreateDialog = useCallback(() => {
     if (inFlightRef.current) return;
+    if (dialogMode !== "closed") return;
     setDialogMode("create");
     // Reset form after mode change to ensure clean state
     createForm.reset({ outletId, name: "", sortOrder: 0, isActive: true });
     setDomainError(null);
     setSuccessFeedback(null);
     setRefreshError(null);
-  }, [createForm, outletId]);
+  }, [createForm, outletId, dialogMode]);
 
   const handleOpenEditDialog = useCallback((row: {
     id: string;
@@ -166,6 +178,7 @@ export function CategoryTable({
     updatedAt: string;
   }, trigger: HTMLButtonElement | null) => {
     if (inFlightRef.current) return;
+    if (dialogMode !== "closed") return;
     editTriggerRef.current = trigger;
     const snapshot = { ...row };
     setEditSnapshot(snapshot);
@@ -181,20 +194,39 @@ export function CategoryTable({
     setDomainError(null);
     setSuccessFeedback(null);
     setRefreshError(null);
-  }, [editForm, outletId]);
+  }, [editForm, outletId, dialogMode]);
+
+  const handleOpenArchiveDialog = useCallback((row: {
+    id: string;
+    name: string;
+    deletedAt: string | null;
+    updatedAt: string;
+  }, mode: "archive" | "restore", trigger: HTMLButtonElement | null) => {
+    if (inFlightRef.current) return;
+    if (dialogMode !== "closed") return;
+    archiveTriggerRef.current = trigger;
+    setArchiveSnapshot({ ...row });
+    setDialogMode(mode);
+    setDomainError(null);
+    setSuccessFeedback(null);
+    setRefreshError(null);
+  }, [dialogMode]);
 
   // Single close guard - owner in CategoryTable
   const handleCloseDialog = useCallback(() => {
     if (inFlightRef.current) return;
-    const form = dialogMode === "create" ? createForm : editForm;
-    if (form.formState.isDirty) {
-      const confirmed = window.confirm("Perubahan belum disimpan. Tutup dialog?");
-      if (!confirmed) return;
+    if (dialogMode === "create" || dialogMode === "edit") {
+      const form = dialogMode === "create" ? createForm : editForm;
+      if (form.formState.isDirty) {
+        const confirmed = window.confirm("Perubahan belum disimpan. Tutup dialog?");
+        if (!confirmed) return;
+      }
     }
     setDialogMode("closed");
     createForm.reset({ outletId, name: "", sortOrder: 0, isActive: true });
     editForm.reset({ outletId, categoryId: "", expectedUpdatedAt: "", name: "", sortOrder: 0, isActive: true });
     setEditSnapshot(null);
+    setArchiveSnapshot(null);
     setDomainError(null);
   }, [createForm, editForm, dialogMode, outletId]);
 
@@ -350,6 +382,82 @@ export function CategoryTable({
     }
   }, [editForm, editSnapshot, outletId, authScope.tenantId, authScope.userId, queryClient]);
 
+  // Archive/restore submit - mode captured while the dialog is open
+  const handleArchiveRestoreSubmit = useCallback(async () => {
+    if (inFlightRef.current) return;
+    const snapshot = archiveSnapshot;
+    const mode = dialogMode;
+    if (!snapshot || (mode !== "archive" && mode !== "restore")) return;
+
+    inFlightRef.current = true;
+    setIsSubmitting(true);
+    setDomainError(null);
+    setRefreshError(null);
+
+    try {
+      const payload = {
+        outletId,
+        categoryId: snapshot.id,
+        expectedUpdatedAt: snapshot.updatedAt,
+      };
+      const result =
+        mode === "archive"
+          ? await archiveCategoryAction(payload)
+          : await restoreCategoryAction(payload);
+      if (!result.ok) {
+        setDomainError(result.message);
+        return;
+      }
+      // Success - action.ok === true is the only success criterion
+      setSuccessFeedback(
+        mode === "archive" ? "Kategori berhasil diarsipkan" : "Kategori berhasil dipulihkan"
+      );
+      setDialogMode("closed");
+      setArchiveSnapshot(null);
+      // Scoped invalidation - separate from action
+      try {
+        await queryClient.invalidateQueries(
+          {
+            predicate: (query) => {
+              const key = query.queryKey;
+              if (!Array.isArray(key) || key.length < 3) return false;
+              if (key[0] !== "categories" || key[1] !== "list") return false;
+              const params = key[2];
+              if (typeof params !== "object" || params === null) return false;
+              const p = params as Record<string, unknown>;
+              if (typeof p.authScope !== "object" || p.authScope === null) return false;
+              const authScopeObj = p.authScope as { tenantId?: unknown; userId?: unknown } | undefined;
+              const tenantId = authScopeObj?.tenantId;
+              const userId = authScopeObj?.userId;
+              const outletIdParam = p.outletId;
+              return (
+                typeof tenantId === "string" &&
+                typeof userId === "string" &&
+                typeof outletIdParam === "string" &&
+                tenantId === authScope.tenantId &&
+                userId === authScope.userId &&
+                outletIdParam === outletId
+              );
+            },
+          },
+          { throwOnError: true }
+        );
+      } catch {
+        // Refresh failed but archive/restore succeeded
+        setRefreshError(
+          mode === "archive"
+            ? "Kategori berhasil diarsipkan, tetapi daftar belum diperbarui."
+            : "Kategori berhasil dipulihkan, tetapi daftar belum diperbarui."
+        );
+      }
+    } catch {
+      setDomainError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+      inFlightRef.current = false;
+    }
+  }, [archiveSnapshot, dialogMode, outletId, authScope.tenantId, authScope.userId, queryClient]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -445,6 +553,19 @@ export function CategoryTable({
           fallbackTriggerRef={triggerRef}
           isArchived={editSnapshot?.deletedAt !== null}
         />
+
+        {/* Archive/Restore confirmation dialog */}
+        <CategoryArchiveDialog
+          isOpen={dialogMode === "archive" || dialogMode === "restore"}
+          mode={dialogMode === "restore" ? "restore" : "archive"}
+          categoryName={archiveSnapshot?.name ?? ""}
+          onClose={handleCloseDialog}
+          onConfirm={handleArchiveRestoreSubmit}
+          isSubmitting={isSubmitting}
+          domainError={domainError}
+          triggerRef={archiveTriggerRef}
+          fallbackTriggerRef={triggerRef}
+        />
       </div>
 
       <div className="space-y-4">
@@ -482,7 +603,7 @@ export function CategoryTable({
                   <TableHead className="w-[60px]">Urutan</TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead className="w-[140px]">Status</TableHead>
-                  <TableHead className="w-[80px]">Aksi</TableHead>
+                  <TableHead className="w-[220px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -508,16 +629,45 @@ export function CategoryTable({
                         </TableCell>
                         <TableCell>
                           {canManageCatalog && !isAuthError && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => handleOpenEditDialog(row, event.currentTarget)}
-                              disabled={isSubmitting && dialogMode !== "closed"}
-                              aria-disabled={isSubmitting}
-                              aria-label={`Edit ${row.name}`}
-                            >
-                              Edit
-                            </Button>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(event) => handleOpenEditDialog(row, event.currentTarget)}
+                                disabled={isSubmitting && dialogMode !== "closed"}
+                                aria-disabled={isSubmitting}
+                                aria-label={`Edit ${row.name}`}
+                              >
+                                Edit
+                              </Button>
+                              {row.deletedAt === null ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(event) =>
+                                    handleOpenArchiveDialog(row, "archive", event.currentTarget)
+                                  }
+                                  disabled={isSubmitting && dialogMode !== "closed"}
+                                  aria-disabled={isSubmitting}
+                                  aria-label={`Arsip ${row.name}`}
+                                >
+                                  Arsip
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(event) =>
+                                    handleOpenArchiveDialog(row, "restore", event.currentTarget)
+                                  }
+                                  disabled={isSubmitting && dialogMode !== "closed"}
+                                  aria-disabled={isSubmitting}
+                                  aria-label={`Pulihkan ${row.name}`}
+                                >
+                                  Pulihkan
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>

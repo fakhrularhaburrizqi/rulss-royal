@@ -17,9 +17,13 @@ import { useCategoriesQuery } from "@/app/dashboard/kategori/useCategoriesQuery"
 // Mock server action boundary
 const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
 const mockUpdateCategoryAction = vi.hoisted(() => vi.fn());
+const mockArchiveCategoryAction = vi.hoisted(() => vi.fn());
+const mockRestoreCategoryAction = vi.hoisted(() => vi.fn());
 vi.mock("@/app/dashboard/menu-actions", () => ({
   createCategoryAction: mockCreateCategoryAction,
   updateCategoryAction: mockUpdateCategoryAction,
+  archiveCategoryAction: mockArchiveCategoryAction,
+  restoreCategoryAction: mockRestoreCategoryAction,
 }));
 
 const authScope: CategoryAuthScope = { tenantId: "tenant-1", userId: "user-1" };
