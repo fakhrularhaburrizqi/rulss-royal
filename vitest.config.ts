@@ -40,6 +40,7 @@ export default defineConfig({
             "tests/unit/useCategoriesQuery.test.tsx",
             "tests/unit/CategoryTable.test.tsx",
             "tests/unit/CategoryCreateDialog.test.tsx",
+            "tests/unit/CategoryEditDialog.test.tsx",
           ],
           setupFiles: ["tests/setup-dom.ts"],
           testTimeout: 40000,

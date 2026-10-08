@@ -6,12 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import type { CategoryAuthScope } from "@/lib/dashboard/category-query-keys";
-import { createCategoryAction } from "@/app/dashboard/menu-actions";
-import { categoryCreateSchema, type CategoryCreateInput } from "@/lib/validators/menu.validator";
+import { createCategoryAction, updateCategoryAction } from "@/app/dashboard/menu-actions";
+import { categoryCreateSchema, categoryUpdateSchema, type CategoryCreateInput, type CategoryUpdateInput } from "@/lib/validators/menu.validator";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { CategoryCreateDialog } from "./CategoryCreateDialog";
+import { CategoryEditDialog } from "./CategoryEditDialog";
 
 interface CategoryTableProps {
   authScope: CategoryAuthScope;
@@ -86,16 +87,28 @@ export function CategoryTable({
       : "Anda tidak memiliki akses ke kategori di outlet ini."
     : "Gagal memuat kategori. Silakan coba lagi.";
 
-  // Create category dialog state
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Dialog mode state
+  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit">("closed");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [domainError, setDomainError] = useState<string | null>(null);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const editTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const form = useForm<CategoryCreateInput>({
+  // Snapshot for edit mode
+  const [editSnapshot, setEditSnapshot] = useState<{
+    id: string;
+    name: string;
+    sortOrder: number;
+    isActive: boolean;
+    deletedAt: string | null;
+    updatedAt: string;
+  } | null>(null);
+
+  // Create form
+  const createForm = useForm<CategoryCreateInput>({
     resolver: zodResolver(categoryCreateSchema),
     defaultValues: {
       outletId,
@@ -105,14 +118,25 @@ export function CategoryTable({
     },
   });
 
+  // Edit form
+  const editForm = useForm<CategoryUpdateInput>({
+    resolver: zodResolver(categoryUpdateSchema),
+    defaultValues: {
+      outletId,
+      categoryId: "",
+      expectedUpdatedAt: "",
+      name: "",
+      sortOrder: 0,
+      isActive: true,
+    },
+  });
+
   // Synchronous in-flight guard
   const inFlightRef = useRef(false);
 
-  // Dirty tracking - use RHF formState.isDirty as single source of truth
-  // const isSubmittedRef = useRef(false); // unused
-
   // beforeunload handler for dirty form - single owner in CategoryTable
   useEffect(() => {
+    const form = dialogMode === "create" ? createForm : editForm;
     const isDirty = form.formState.isDirty;
     if (!isDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -121,31 +145,61 @@ export function CategoryTable({
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [form.formState.isDirty]);
+  }, [dialogMode, createForm, editForm, createForm.formState.isDirty, editForm.formState.isDirty]);
 
-  const handleOpenDialog = useCallback(() => {
+  const handleOpenCreateDialog = useCallback(() => {
     if (inFlightRef.current) return;
-    setIsDialogOpen(true);
-    form.reset({ outletId, name: "", sortOrder: 0, isActive: true });
+    setDialogMode("create");
+    // Reset form after mode change to ensure clean state
+    createForm.reset({ outletId, name: "", sortOrder: 0, isActive: true });
     setDomainError(null);
     setSuccessFeedback(null);
     setRefreshError(null);
-  }, [form, outletId]);
+  }, [createForm, outletId]);
+
+  const handleOpenEditDialog = useCallback((row: {
+    id: string;
+    name: string;
+    sortOrder: number;
+    isActive: boolean;
+    deletedAt: string | null;
+    updatedAt: string;
+  }, trigger: HTMLButtonElement | null) => {
+    if (inFlightRef.current) return;
+    editTriggerRef.current = trigger;
+    const snapshot = { ...row };
+    setEditSnapshot(snapshot);
+    setDialogMode("edit");
+    editForm.reset({
+      outletId,
+      categoryId: row.id,
+      expectedUpdatedAt: row.updatedAt,
+      name: row.name,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
+    });
+    setDomainError(null);
+    setSuccessFeedback(null);
+    setRefreshError(null);
+  }, [editForm, outletId]);
 
   // Single close guard - owner in CategoryTable
   const handleCloseDialog = useCallback(() => {
     if (inFlightRef.current) return;
+    const form = dialogMode === "create" ? createForm : editForm;
     if (form.formState.isDirty) {
       const confirmed = window.confirm("Perubahan belum disimpan. Tutup dialog?");
       if (!confirmed) return;
     }
-    setIsDialogOpen(false);
-    form.reset({ outletId, name: "", sortOrder: 0, isActive: true });
+    setDialogMode("closed");
+    createForm.reset({ outletId, name: "", sortOrder: 0, isActive: true });
+    editForm.reset({ outletId, categoryId: "", expectedUpdatedAt: "", name: "", sortOrder: 0, isActive: true });
+    setEditSnapshot(null);
     setDomainError(null);
-  }, [form, outletId]);
+  }, [createForm, editForm, dialogMode, outletId]);
 
-  // Single submit with in-flight guard
-  const handleSubmit = useCallback(async (data: CategoryCreateInput) => {
+  // Create submit
+  const handleCreateSubmit = useCallback(async (data: CategoryCreateInput) => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setIsSubmitting(true);
@@ -156,7 +210,7 @@ export function CategoryTable({
       const result = await createCategoryAction({ ...data, outletId });
       if (!result.ok) {
         if (result.code === "CATEGORY_NAME_CONFLICT") {
-          form.setError("name", { type: "server", message: result.message });
+          createForm.setError("name", { type: "server", message: result.message });
         } else {
           setDomainError(result.message);
         }
@@ -164,8 +218,8 @@ export function CategoryTable({
       }
       // Success - action.ok === true is the only success criterion
       setSuccessFeedback("Kategori berhasil dibuat");
-      form.reset({ outletId, name: "", sortOrder: 0, isActive: true });
-      setIsDialogOpen(false);
+      createForm.reset({ outletId, name: "", sortOrder: 0, isActive: true });
+      setDialogMode("closed");
       // Scoped invalidation - separate from action
       try {
         await queryClient.invalidateQueries(
@@ -204,7 +258,97 @@ export function CategoryTable({
       setIsSubmitting(false);
       inFlightRef.current = false;
     }
-  }, [form, outletId, authScope.tenantId, authScope.userId, queryClient]);
+  }, [createForm, outletId, authScope.tenantId, authScope.userId, queryClient]);
+
+  // Edit submit
+  const handleEditSubmit = useCallback(async (data: CategoryUpdateInput) => {
+    if (inFlightRef.current) return;
+    const snapshot = editSnapshot;
+    if (!snapshot) return;
+
+    // Actual change detection: normalized form values vs frozen edit snapshot
+    const nameChanged = typeof data.name === "string" && data.name.trim() !== snapshot.name;
+    const sortOrderChanged = typeof data.sortOrder === "number" && Number(data.sortOrder) !== snapshot.sortOrder;
+    const isActiveChanged = typeof data.isActive === "boolean" && data.isActive !== snapshot.isActive;
+
+    if (!nameChanged && !sortOrderChanged && !isActiveChanged) {
+      setSuccessFeedback(null);
+      setRefreshError(null);
+      setDomainError("Tidak ada perubahan");
+      return;
+    }
+
+    // Authoritative metadata: outletId from prop, id/updatedAt from snapshot
+    const payload: CategoryUpdateInput = {
+      outletId,
+      categoryId: snapshot.id,
+      expectedUpdatedAt: snapshot.updatedAt,
+    };
+    if (nameChanged) payload.name = (data.name as string).trim();
+    if (sortOrderChanged) payload.sortOrder = Number(data.sortOrder);
+    if (isActiveChanged) payload.isActive = Boolean(data.isActive);
+
+    inFlightRef.current = true;
+    setIsSubmitting(true);
+    setDomainError(null);
+    setRefreshError(null);
+
+    try {
+      const result = await updateCategoryAction(payload);
+      if (!result.ok) {
+        if (result.code === "CATEGORY_NAME_CONFLICT") {
+          editForm.setError("name", { type: "server", message: result.message });
+        } else if (result.code === "CATALOG_VERSION_CONFLICT" || result.code === "CATALOG_STATE_CONFLICT" || result.code === "CATEGORY_NOT_FOUND") {
+          setDomainError(result.message);
+        } else {
+          setDomainError(result.message);
+        }
+        return;
+      }
+      // Success - action.ok === true is the only success criterion
+      setSuccessFeedback("Kategori berhasil diperbarui");
+      editForm.reset({ outletId, categoryId: "", expectedUpdatedAt: "", name: "", sortOrder: 0, isActive: true });
+      setDialogMode("closed");
+      setEditSnapshot(null);
+      // Scoped invalidation - separate from action
+      try {
+        await queryClient.invalidateQueries(
+          {
+            predicate: (query) => {
+              const key = query.queryKey;
+              if (!Array.isArray(key) || key.length < 3) return false;
+              if (key[0] !== "categories" || key[1] !== "list") return false;
+              const params = key[2];
+              if (typeof params !== "object" || params === null) return false;
+              const p = params as Record<string, unknown>;
+              if (typeof p.authScope !== "object" || p.authScope === null) return false;
+              const authScopeObj = p.authScope as { tenantId?: unknown; userId?: unknown } | undefined;
+              const tenantId = authScopeObj?.tenantId;
+              const userId = authScopeObj?.userId;
+              const outletIdParam = p.outletId;
+              return (
+                typeof tenantId === "string" &&
+                typeof userId === "string" &&
+                typeof outletIdParam === "string" &&
+                tenantId === authScope.tenantId &&
+                userId === authScope.userId &&
+                outletIdParam === outletId
+              );
+            },
+          },
+          { throwOnError: true }
+        );
+      } catch {
+        // Refresh failed but update succeeded
+        setRefreshError("Kategori berhasil diperbarui, tetapi daftar belum diperbarui.");
+      }
+    } catch {
+      setDomainError("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+      inFlightRef.current = false;
+    }
+  }, [editForm, editSnapshot, outletId, authScope.tenantId, authScope.userId, queryClient]);
 
   return (
     <div className="space-y-4">
@@ -246,8 +390,8 @@ export function CategoryTable({
         {canManageCatalog && !isAuthError && (
           <Button
             ref={triggerRef}
-            onClick={handleOpenDialog}
-            disabled={isSubmitting && isDialogOpen}
+            onClick={handleOpenCreateDialog}
+            disabled={isSubmitting && dialogMode !== "closed"}
             aria-disabled={isSubmitting}
           >
             Tambah Kategori
@@ -280,13 +424,26 @@ export function CategoryTable({
 
           {/* Create Category Dialog - simplified, forwards close to owner */}
         <CategoryCreateDialog
-          isOpen={isDialogOpen}
+          isOpen={dialogMode === "create"}
           onClose={handleCloseDialog}
           isSubmitting={isSubmitting}
-          onSubmit={handleSubmit}
+          onSubmit={handleCreateSubmit}
           domainError={domainError}
-          form={form}
+          form={createForm}
           triggerRef={triggerRef}
+        />
+
+        {/* Edit Category Dialog */}
+        <CategoryEditDialog
+          isOpen={dialogMode === "edit"}
+          onClose={handleCloseDialog}
+          isSubmitting={isSubmitting}
+          onSubmit={handleEditSubmit}
+          domainError={domainError}
+          form={editForm}
+          triggerRef={editTriggerRef}
+          fallbackTriggerRef={triggerRef}
+          isArchived={editSnapshot?.deletedAt !== null}
         />
       </div>
 
@@ -325,12 +482,13 @@ export function CategoryTable({
                   <TableHead className="w-[60px]">Urutan</TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead className="w-[140px]">Status</TableHead>
+                  <TableHead className="w-[80px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="py-8 text-center text-emerald-600">
+                    <TableCell colSpan={4} className="py-8 text-center text-emerald-600">
                       Tidak ada kategori ditemukan
                     </TableCell>
                   </TableRow>
@@ -347,6 +505,20 @@ export function CategoryTable({
                           >
                             {status.label}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {canManageCatalog && !isAuthError && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => handleOpenEditDialog(row, event.currentTarget)}
+                              disabled={isSubmitting && dialogMode !== "closed"}
+                              aria-disabled={isSubmitting}
+                              aria-label={`Edit ${row.name}`}
+                            >
+                              Edit
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

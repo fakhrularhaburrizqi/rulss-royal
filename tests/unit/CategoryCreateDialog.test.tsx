@@ -6,18 +6,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CategoryTable } from "@/app/dashboard/kategori/CategoryTable";
 import type { CategoryAuthScope } from "@/lib/dashboard/category-query-keys";
 import type { PaginatedCategoriesResult } from "@/lib/services/menu-category-query.service";
-import { createCategoryAction } from "@/app/dashboard/menu-actions";
+import { createCategoryAction, updateCategoryAction } from "@/app/dashboard/menu-actions";
 
 const authScope: CategoryAuthScope = { tenantId: "tenant-1", userId: "user-1" };
 const outletId = "outlet-1";
 
 const mockEmptyData: PaginatedCategoriesResult = { data: [], nextCursor: null, hasMore: false };
 
-// Mock the server action using vi.hoisted
+// Mock the server actions using vi.hoisted
 const mockCreateCategoryAction = vi.hoisted(() => vi.fn());
+const mockUpdateCategoryAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@/app/dashboard/menu-actions", () => ({
   createCategoryAction: mockCreateCategoryAction,
+  updateCategoryAction: mockUpdateCategoryAction,
 }));
 
 function renderWithProvider(ui: React.ReactElement) {
@@ -33,6 +35,10 @@ describe("CategoryCreateDialog", () => {
     mockCreateCategoryAction.mockResolvedValue({
       ok: true,
       data: { id: "cat-new", name: "Baru", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+    });
+    mockUpdateCategoryAction.mockResolvedValue({
+      ok: true,
+      data: { id: "cat-1", name: "Updated", sortOrder: 5, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
     });
   });
 
