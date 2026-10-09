@@ -491,7 +491,7 @@ export function CategoryTable({
               placeholder="Cari nama kategori..."
               maxLength={80}
               disabled={isAuthError}
-              className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 placeholder:text-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
+              className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 placeholder:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
             />
           </div>
         </div>
@@ -501,6 +501,7 @@ export function CategoryTable({
             onClick={handleOpenCreateDialog}
             disabled={isSubmitting && dialogMode !== "closed"}
             aria-disabled={isSubmitting}
+            className="aria-disabled:cursor-wait"
           >
             Tambah Kategori
           </Button>
@@ -600,10 +601,10 @@ export function CategoryTable({
             <Table className="w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[60px]">Urutan</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead className="w-[140px]">Status</TableHead>
-                  <TableHead className="w-[220px]">Aksi</TableHead>
+                  <TableHead className="w-[60px] text-emerald-800">Urutan</TableHead>
+                  <TableHead className="text-emerald-800">Nama</TableHead>
+                  <TableHead className="w-[140px] text-emerald-800">Status</TableHead>
+                  <TableHead className="w-[220px] text-emerald-800">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -637,6 +638,7 @@ export function CategoryTable({
                                 disabled={isSubmitting && dialogMode !== "closed"}
                                 aria-disabled={isSubmitting}
                                 aria-label={`Edit ${row.name}`}
+                                className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
                               >
                                 Edit
                               </Button>
@@ -650,6 +652,7 @@ export function CategoryTable({
                                   disabled={isSubmitting && dialogMode !== "closed"}
                                   aria-disabled={isSubmitting}
                                   aria-label={`Arsip ${row.name}`}
+                                  className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
                                 >
                                   Arsip
                                 </Button>
@@ -663,6 +666,7 @@ export function CategoryTable({
                                   disabled={isSubmitting && dialogMode !== "closed"}
                                   aria-disabled={isSubmitting}
                                   aria-label={`Pulihkan ${row.name}`}
+                                  className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
                                 >
                                   Pulihkan
                                 </Button>
@@ -688,7 +692,7 @@ export function CategoryTable({
                   type="button"
                   onClick={goToPrevious}
                   disabled={!canGoPrevious}
-                  className="inline-flex items-center rounded-lg border border-emerald-900/10 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center rounded-lg border border-emerald-900/30 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Halaman sebelumnya"
                 >
                   Sebelumnya
@@ -697,7 +701,7 @@ export function CategoryTable({
                   type="button"
                   onClick={goToNext}
                   disabled={!canGoNext}
-                  className="inline-flex items-center rounded-lg border border-emerald-900/10 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center rounded-lg border border-emerald-900/30 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Halaman selanjutnya"
                 >
                   Selanjutnya
