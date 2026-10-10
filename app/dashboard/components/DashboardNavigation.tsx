@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { DashboardContextResult } from "@/lib/dashboard/context";
@@ -10,6 +11,8 @@ type DashboardNavigationProps = {
   resolution: DashboardContextResult;
   currentPath?: string;
 };
+
+const READY_ROUTES = new Set(["/dashboard/kategori", "/dashboard/menu"]);
 
 export function DashboardNavigation({ resolution, currentPath }: DashboardNavigationProps) {
   const pathname = usePathname();
@@ -40,7 +43,7 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
             return null;
           }
 
-          const isComingSoon = item.requiredPermission !== undefined && item.href !== "/dashboard/kategori";
+          const isComingSoon = item.requiredPermission !== undefined && !READY_ROUTES.has(item.href);
 
           if (isComingSoon) {
             return (

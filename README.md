@@ -1,934 +1,415 @@
-# WARUNGKU — Website UMKM Inovatif
+# Warungku
 
-> Blueprint implementasi lengkap untuk aplikasi UMKM kuliner berbasis **Next.js**, mencakup pemesanan QR, kasir/POS, reservasi dan uang muka, stok bahan baku, pembelian, dapur, serta laporan keuangan SAK EMKM.
+**Aplikasi pemesanan menu melalui QR meja dan dashboard pengelola untuk UMKM kuliner.**
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
-![PWA](https://img.shields.io/badge/PWA-Offline--ready-purple)
-![License](https://img.shields.io/badge/license-Proprietary-lightgrey)
+Warungku memungkinkan pelanggan memindai QR meja, melihat menu, memilih item, dan mengirim pesanan tanpa membuat akun. Pengelola mengatur katalog dan meja, menerima pesanan, serta memperbarui status melalui dashboard dengan autentikasi dan pembatasan akses tenant/outlet.
 
-## 1. Ringkasan
+Rilis awal ditujukan untuk demonstrasi UAS dan deployment terbatas menggunakan data uji. **Alur QR sampai pesanan diterima pengelola adalah fitur inti rilis awal**, bukan hanya roadmap. Modul finansial dan operasional yang lebih kompleks dilanjutkan setelah alur utama tersebut berjalan.
 
-Warungku adalah satu aplikasi web mobile/PWA untuk mengelola operasi UMKM F&B dari meja pelanggan hingga laporan keuangan:
+> Dokumen ini membedakan fitur yang tersedia dari target rilis. QR-order, antarmuka Menu/Meja, penerimaan pesanan, dan deployment belum diklaim selesai hanya karena fondasi backend atau demo sudah tersedia.
 
-- pelanggan memindai QR unik per meja, melihat menu, dan memesan tanpa memasang aplikasi;
-- kasir mengelola tagihan, split bill, pembayaran, struk, serta buka/tutup shift;
-- dapur menerima antrean pesanan secara real-time;
-- reservasi memiliki kalender kapasitas dan uang muka yang dapat diatur admin;
-- stok berkurang otomatis berdasarkan resep setiap menu yang terjual;
-- pembelian, penerimaan, waste, dan stock opname tercatat sebagai mutasi;
-- transaksi membentuk jurnal debit-kredit dan laporan SAK EMKM;
-- PWA kasir tetap dapat membuat transaksi tunai ketika internet terputus.
+## 1. Tujuan dan Alur Utama
 
-### Sasaran MVP
+Alur pelanggan:
 
-| KPI | Target |
-|---|---:|
-| Waktu membuat pesanan | < 2 menit |
-| Kesalahan item | < 1% order |
-| No-show reservasi | < 8% |
-| Selisih kas | Rp0 atau 100% terjelaskan |
-| Food cost | 28–35% |
-| Tutup buku bulanan | < 1 hari |
-| Ketersediaan aplikasi | 99,9% |
-| p95 API normal | < 300 ms |
+**Scan QR meja → lihat menu outlet → pilih item → keranjang → kirim pesanan → lihat konfirmasi dan status.**
 
-## 2. Modul Utama
+Alur pengelola:
 
-1. **Menu & QR Meja** — kategori, foto, varian, topping, alergi, sold-out otomatis, token QR.
-2. **Pemesanan** — dine-in QR, walk-in POS, catatan item, status pesanan, kitchen ticket.
-3. **Kasir/POS** — pajak, service, diskon, pembulatan, split bill, multi-payment, refund, shift.
-4. **Kitchen Display System** — antrean per stasiun, timer, prioritas, status produksi.
-5. **Reservasi** — slot, kapasitas, temporary hold, uang muka, reminder, check-in, no-show.
-6. **Stok & Resep** — bahan, satuan, konversi, BOM/resep, minimum stock, mutasi, waste, opname.
-7. **Pembelian** — supplier, purchase order, penerimaan parsial, retur, utang pemasok.
-8. **Akuntansi** — chart of accounts, jurnal otomatis, buku besar, trial balance, lock period.
-9. **Laporan** — penjualan, shift, stok, food cost, laba-rugi, posisi keuangan, arus kas.
-10. **Admin & Audit** — user, role, approval, konfigurasi outlet, audit before/after, export.
+**Login → pilih outlet → kelola kategori/menu/meja → lihat pesanan masuk → perbarui status pesanan.**
 
-## 3. Stack Teknologi
+Tujuan rilis awal:
 
-| Lapisan | Pilihan |
+- Memperlihatkan pemesanan QR yang benar-benar tersimpan di database.
+- Memastikan meja dan outlet ditentukan dari token yang diverifikasi server.
+- Memastikan harga dan ketersediaan dihitung ulang di server.
+- Mencegah pesanan ganda akibat klik ulang atau retry request.
+- Memisahkan data usaha/outlet dan membatasi akses pengelola berdasarkan permission.
+- Menyediakan aplikasi yang dapat dideploy dan didemonstrasikan melalui perangkat pelanggan serta pengelola.
+
+## 2. Cakupan Wajib Rilis Awal
+
+### A. Autentikasi dan dashboard
+
+- Login pengelola dengan mekanisme tenant/email/password yang tersedia.
+- Proteksi dashboard dan logout.
+- Identitas tenant, pemilihan outlet, dan pemeriksaan akses outlet.
+- Permission membaca dan mengelola katalog serta pesanan di server.
+- Navigasi dan tampilan desktop/mobile yang terbaca.
+
+### B. Pengelolaan katalog
+
+- Kategori: list, search, filter, pagination, tambah, edit, arsip, pulihkan.
+- Menu: list management, search/filter/pagination, tambah dan edit data dasar.
+- Data dasar Menu: kategori, nama, deskripsi bila digunakan, harga integer Rupiah, status aktif, dan sold-out manual.
+- Menu yang tidak aktif, diarsipkan, sold-out, atau berkategori tidak tersedia tidak dapat dipesan melalui halaman publik.
+- Pengelolaan gambar pada rilis awal boleh menggunakan URL metadata existing; upload file/object storage tidak menjadi blocker.
+- Validasi, optimistic concurrency, audit, serta feedback mutation sesuai kontrak backend.
+
+Archive/restore Menu dapat dilanjutkan sebagai peningkatan terpisah apabila tidak diperlukan untuk menyelesaikan alur demo; pengelola tetap harus dapat mengontrol item yang ditampilkan dan bisa dipesan melalui status yang didukung.
+
+### C. Meja dan QR
+
+- List, tambah/edit data dasar, dan aktif/nonaktif meja sesuai backend existing.
+- QR untuk setiap meja yang dikelola dalam outlet.
+- Signed token atau mekanisme token terverifikasi yang mengikat identitas meja/outlet.
+- Expiry dan revoke/invalidation token yang dapat diuji.
+- Token invalid, expired, revoked, atau meja tidak aktif tidak dapat digunakan membuat pesanan.
+- QR dapat ditampilkan/diunduh atau dicetak melalui browser untuk demonstrasi; printer ESC/POS tidak diwajibkan.
+- Jangan menggunakan query `tableId`/`outletId` yang dipercaya begitu saja sebagai pengganti keamanan token.
+
+### D. Menu publik dan keranjang
+
+- Pelanggan tidak diwajibkan login pengelola atau membuat akun.
+- Halaman menu menggunakan data database dari outlet yang diizinkan token.
+- Identitas meja ditampilkan agar pelanggan mengetahui tujuan pesanan.
+- Item tersedia, harga, quantity, catatan, serta ringkasan pesanan dapat dilihat.
+- Keranjang boleh menggunakan state lokal, tetapi pengiriman pesanan dan sumber harga/ketersediaan harus divalidasi server.
+- Halaman memiliki loading, empty, unavailable-token, validation/error, dan success states.
+
+### E. Pembuatan pesanan
+
+- Pesanan tersimpan di PostgreSQL, bukan hanya `localStorage`.
+- Outlet/meja ditentukan dari token/context yang diverifikasi server.
+- Harga item dan jumlah total dihitung ulang di server; total client bukan sumber kebenaran.
+- Nama/harga dan informasi transaksi yang diperlukan disimpan sebagai snapshot.
+- Quantity, catatan, batas item, dan availability divalidasi sesuai domain existing.
+- Pembuatan order atomik dalam database transaction.
+- Idempotency key dan penanganan request duplikat yang benar; disable tombol atau retry nomor order saja bukan idempotency.
+- Setelah berhasil, pelanggan menerima nomor/konfirmasi pesanan.
+- Informasi pembayaran pada rilis awal adalah **bayar di kasir**. Ini bukan fitur pencatatan pembayaran, bukti lunas, atau integrasi payment gateway.
+
+### F. Penerimaan dan status pesanan
+
+- Dashboard pengelola menampilkan pesanan masuk dari database, dengan meja, waktu, item, quantity, catatan, dan total dasar.
+- Pengelola dapat menjalankan transisi status dasar yang didukung domain service.
+- Alur minimum mencakup menerima/memproses pesanan serta menandai siap/selesai; pemetaan label UI harus mengikuti kontrak state machine backend yang ditinjau, bukan menulis status arbitrer dari client.
+- Pembatalan mengikuti transisi dan permission yang tersedia; tidak hard-delete transaksi.
+- Pelanggan dapat melihat status pesanan miliknya dengan kontrol akses yang aman.
+- Mengetahui order ID saja tidak boleh menjadi izin membaca semua pesanan atau data pelanggan lain.
+- Pembaruan daftar/status boleh menggunakan polling atau refresh yang jelas. SSE/WebSocket dan KDS multi-stasiun bukan syarat rilis awal.
+- Order read/update dibatasi tenant/outlet dan permission pengelola.
+
+### G. Deployment dan pengujian
+
+- Aplikasi tersedia melalui URL HTTPS pada hosting yang dipilih.
+- Database deployment dan environment disiapkan secara terkontrol.
+- Akun/dataset demo tidak memuat secrets atau data pelanggan nyata.
+- Alur QR → order → dashboard → status diuji pada deployment, bukan hanya localhost.
+- Setup, pengujian, serta langkah pemulihan dasar terdokumentasi.
+
+## 3. Implementasi yang Tersedia
+
+Bagian ini berdasarkan checkpoint implementasi yang telah diverifikasi dan dilaporkan. Tidak menyatakan seluruh target pada bagian 2 sudah selesai.
+
+| Area | Implementasi tersedia | Batasnya |
+|---|---|---|
+| Fondasi | Next.js, TypeScript strict, Prisma/PostgreSQL, Auth.js | Deployment dan konfigurasi production tetap perlu diuji |
+| Identity/outlet | Login dasar, RBAC helpers, tenant/outlet context, dashboard shell dan selector | Administration UI/PIN/approval lengkap bukan fitur selesai |
+| Kategori | List/search/filter/pagination, tambah/edit/arsip/pulihkan, conflict handling, audit backend, focus dan refresh feedback | Mutation nyata pada deployment serta E2E masih diperlukan |
+| API katalog | Management list kategori dan Menu, cursor pagination, scoped authorization, browser API clients | API management membutuhkan session; bukan API menu publik anonim |
+| Menu | Backend mutation/read dan bounded management API | UI management Menu belum dinyatakan selesai |
+| Meja | Backend validasi/read/mutation dasar | UI meja dan alur signed QR belum dinyatakan selesai |
+| Order | Domain create/status dasar, snapshot dan transaction handling pada jalur existing | Endpoint publik idempoten, QR context, tracking, dan UI penerimaan belum dinyatakan selesai |
+| Demo | Landing/menu/cart/checkout/operasional demonstrasi | State lokal/localStorage bukan alur order produksi |
+
+Dengan demikian, fondasi existing digunakan kembali, tetapi fitur publik tidak boleh dianggap selesai hanya karena backend staff atau demo telah tersedia.
+
+## 4. Fitur di Luar Syarat Rilis Awal
+
+Berikut bukan blocker UAS, dan tidak diklaim sebagai fitur produksi tersedia:
+
+- Payment gateway/QRIS, webhook settlement, split bill, multi-payment, refund finansial, dan shift kasir lengkap.
+- Pajak, service, discount approval, dan billing kompleks. Total dasar rilis awal mengikuti kontrak pricing yang tersedia dan dijelaskan secara jujur.
+- KDS multi-stasiun/realtime, SLA kitchen timer, dan printer ESC/POS.
+- Reservasi dan deposit.
+- Inventory, resep, auto sold-out berbasis bahan, pembelian, serta HPP.
+- Akuntansi SAK EMKM dan laporan keuangan.
+- PWA offline/queue/conflict sync.
+- Varian, modifier/topping, alergi, dan upload gambar/storage.
+- Administrasi pengguna/role, PIN perangkat, dan approval operasional lengkap.
+
+Fitur tersebut tetap dapat dikembangkan sesudah rilis awal. Scope dikurangi dengan menunda kompleksitas operasional, **bukan menghilangkan pemesanan QR**.
+
+## 5. Teknologi
+
+| Lapisan | Teknologi |
 |---|---|
-| Framework | **Next.js 15 App Router** |
-| Bahasa | TypeScript 5, strict mode |
-| UI | React 19, Tailwind CSS, shadcn/ui, Lucide Icons |
-| Form | React Hook Form + Zod |
+| Framework | Next.js 15 App Router |
+| UI | React 19, Tailwind CSS, komponen berbasis Radix/shadcn-style, Lucide |
+| Bahasa | TypeScript strict |
+| Database/ORM | PostgreSQL 16, Prisma 6 |
+| Auth pengelola | Auth.js v5 Credentials |
+| Form/validasi | React Hook Form, Zod |
 | Server state | TanStack Query |
-| Database | PostgreSQL 16 terkelola |
-| ORM | Prisma ORM |
-| Authentication | Auth.js v5 + Credentials/PIN kasir; MFA admin opsional |
-| Authorization | RBAC + scope `tenantId`/`outletId` di server |
-| PWA | Serwist + Web App Manifest |
-| Offline store | Dexie.js / IndexedDB |
-| Realtime | Server-Sent Events atau managed WebSocket |
-| Payment | Midtrans Snap/Core API QRIS; adapter untuk Xendit |
-| Notifikasi | WhatsApp `wa.me`; WhatsApp Business API opsional |
-| File | S3-compatible object storage |
-| Job | Vercel Cron/Trigger.dev atau worker + tabel outbox |
-| Printer | ESC/POS 58/80 mm via Web Bluetooth/local print bridge |
-| Testing | Vitest, Testing Library, Playwright |
-| Monitoring | Sentry + OpenTelemetry + structured logs |
-| Deployment | Vercel + Neon/Supabase PostgreSQL; alternatif Docker/Railway |
+| Tests | Vitest, Testing Library; browser/integration/E2E sesuai fase |
+| Tooling | pnpm, ESLint, Prettier |
 
-> **Keputusan arsitektur:** gunakan modular monolith untuk MVP. Pisahkan domain secara tegas di kode, tetapi jangan menggunakan microservices sebelum kebutuhan skala dan tim benar-benar terukur.
+Node.js 24 LTS digunakan pada lingkungan pengembangan. Ikuti versi yang dikunci `package.json` dan `pnpm-lock.yaml`; jangan memperbarui seluruh dependency hanya untuk mengikuti contoh dokumentasi.
 
-## 4. Arsitektur
+## 6. Prinsip Arsitektur dan Keamanan
 
-```mermaid
-flowchart TD
-  C[Customer PWA] --> CDN[CDN / WAF]
-  P[Cashier PWA] --> CDN
-  K[Kitchen Display] --> CDN
-  A[Admin Web] --> CDN
-  CDN --> N[Next.js 15 App Router]
-  N --> IAM[Identity & RBAC]
-  N --> CAT[Catalog]
-  N --> ORD[Ordering]
-  N --> BILL[Billing & Payment]
-  N --> RSV[Reservation]
-  N --> INV[Inventory & Procurement]
-  N --> ACC[Accounting & Reporting]
-  N --> OUT[Outbox & Notification]
-  IAM --> DB[(PostgreSQL)]
-  CAT --> DB
-  ORD --> DB
-  BILL --> DB
-  RSV --> DB
-  INV --> DB
-  ACC --> DB
-  N --> S3[Object Storage]
-  BILL --> PG[Midtrans / Xendit]
-  OUT --> WA[WhatsApp / Email]
-```
+- Modular monolith; domain dipisahkan tanpa mewajibkan microservices.
+- Management routes menggunakan session dan permission server.
+- Public QR routes menggunakan token/context publik yang diverifikasi; jangan menghapus authorization staff agar endpoint dapat dipakai anonim.
+- Token tidak boleh memungkinkan akses lintas tenant/outlet.
+- Public menu hanya menampilkan data yang dibutuhkan pelanggan, bukan audit atau informasi internal management.
+- Harga, availability, quantity, dan transisi status diverifikasi server.
+- Uang integer Rupiah; waktu UTC dengan tampilan Asia/Jakarta bila diperlukan.
+- Order dibuat atomik; idempotency key diproses sesuai kontrak request, bukan sekadar dicegah oleh UI.
+- Request yang memakai key sama dengan payload berbeda ditangani eksplisit sesuai kontrak idempotency.
+- Domain order existing boleh digunakan ulang setelah context publik dan permission boundary ditinjau.
+- Pengelola menggunakan trusted tenant/outlet context; UI permission bukan satu-satunya kontrol.
+- Cache client dipisahkan menurut scope dan parameter query.
+- Akses status pelanggan menggunakan capability/session/token sesuai desain yang ditinjau; URL order ID saja tidak cukup.
+- Signed QR/access tokens adalah kredensial: jangan ditulis ke log, di-commit, atau diekspos sebagai contoh aktif dalam README.
+- Rate-limit pada endpoint publik dan masking log harus dipertimbangkan sebagai bagian deployment alur QR.
 
-### Prinsip Arsitektur
-
-- API-first dan kontrak terversi melalui `/api/v1`.
-- seluruh validasi harga, pajak, diskon, stok, dan hak akses dilakukan di server;
-- transaksi uang dan stok bersifat idempoten serta dapat diaudit;
-- gunakan database transaction untuk order, payment, stock movement, jurnal, dan outbox;
-- simpan uang sebagai integer Rupiah, bukan floating point;
-- simpan waktu dalam UTC dan tampilkan menggunakan `Asia/Jakarta`;
-- dokumen finansial yang sudah diposting tidak dihapus—koreksi melalui reversal/refund.
-
-## 5. Struktur Proyek
+## 7. Struktur Utama Repository
 
 ```text
-warungku/
-├── app/
-│   ├── (public)/
-│   │   ├── menu/[tableToken]/page.tsx
-│   │   ├── order/[orderId]/page.tsx
-│   │   └── reservasi/page.tsx
-│   ├── (staff)/
-│   │   ├── pos/page.tsx
-│   │   ├── kitchen/page.tsx
-│   │   ├── shifts/page.tsx
-│   │   └── inventory/page.tsx
-│   ├── (admin)/admin/
-│   │   ├── dashboard/page.tsx
-│   │   ├── catalog/page.tsx
-│   │   ├── reservations/page.tsx
-│   │   ├── procurement/page.tsx
-│   │   ├── accounting/page.tsx
-│   │   ├── reports/page.tsx
-│   │   └── settings/page.tsx
-│   ├── api/v1/
-│   │   ├── public/menu/[tableToken]/route.ts
-│   │   ├── public/orders/route.ts
-│   │   ├── bills/[id]/payments/route.ts
-│   │   ├── reservations/route.ts
-│   │   ├── inventory/movements/route.ts
-│   │   ├── reports/profit-loss/route.ts
-│   │   └── webhooks/payments/[provider]/route.ts
-│   ├── manifest.ts
-│   ├── layout.tsx
-│   └── globals.css
-├── components/
-│   ├── ui/
-│   ├── menu/
-│   ├── pos/
-│   ├── kitchen/
-│   ├── reservation/
-│   ├── inventory/
-│   └── reports/
-├── modules/
-│   ├── identity/
-│   ├── catalog/
-│   ├── ordering/
-│   ├── billing/
-│   ├── reservation/
-│   ├── inventory/
-│   ├── procurement/
-│   ├── accounting/
-│   ├── reporting/
-│   └── notification/
-├── lib/
-│   ├── auth.ts
-│   ├── db.ts
-│   ├── money.ts
-│   ├── permissions.ts
-│   ├── idempotency.ts
-│   ├── outbox.ts
-│   ├── audit.ts
-│   └── validators/
-├── workers/
-│   ├── outbox.worker.ts
-│   ├── reservation-expiry.worker.ts
-│   ├── reconciliation.worker.ts
-│   └── daily-summary.worker.ts
-├── prisma/
-│   ├── schema.prisma
-│   ├── migrations/
-│   └── seed.ts
-├── public/
-│   ├── icons/
-│   └── offline.html
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-├── docs/
-│   ├── adr/
-│   ├── api/
-│   └── runbooks/
-├── middleware.ts
-├── next.config.ts
-├── package.json
-└── README.md
+app/
+  (auth)/                 # Autentikasi pengelola
+  api/                    # Auth dan endpoint katalog existing
+  dashboard/
+    components/           # Shell, navigasi, pemilihan outlet
+    kategori/             # UI kategori existing
+components/
+  ui/                     # Primitif UI
+lib/
+  api/                    # API clients
+  dashboard/              # Context/query-key factories
+  order/                  # Context/errors/domain helpers
+  services/               # Domain/read/query services
+  validators/             # Request schemas
+prisma/
+  schema.prisma
+  migrations/
+scripts/                  # Bootstrap existing
+tests/
+  unit/                   # Unit dan DOM tests
 ```
 
-## 6. Instalasi
+Path untuk Menu UI, meja/QR, public ordering, tracking, dan staff orders ditetapkan pada rencana implementasi berikutnya. Struktur di atas adalah ringkasan area existing, bukan klaim seluruh folder fitur target sudah dibuat.
 
-### Prasyarat
+## 8. Kontrak API
 
-- Node.js 24 LTS (disarankan v24.14.0 atau versi 24.x terbaru)
-- pnpm 9+
-- PostgreSQL 16
-- akun payment gateway sandbox
-
-```bash
-pnpm create next-app@latest warungku \
-  --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*"
-cd warungku
-
-pnpm add @prisma/client prisma zod next-auth@beta \
-  @tanstack/react-query react-hook-form @hookform/resolvers \
-  dexie serwist decimal.js date-fns nanoid pino
-
-pnpm add -D vitest @vitest/coverage-v8 @testing-library/react \
-  @playwright/test prettier prettier-plugin-tailwindcss
-
-pnpm prisma generate
-pnpm prisma migrate dev
-pnpm dev
-```
-
-### Environment Variables
-
-```dotenv
-NODE_ENV=development
-APP_URL=http://localhost:3000
-APP_TIMEZONE=Asia/Jakarta
-DATABASE_URL=postgresql://user:password@localhost:5432/warungku
-AUTH_SECRET=change-with-strong-random-secret
-
-OUTLET_TAX_PERCENT=10
-OUTLET_SERVICE_PERCENT=0
-OUTLET_ROUNDING=100
-QR_TOKEN_TTL_MINUTES=180
-OFFLINE_MAX_HOURS=24
-
-RESERVATION_DEPOSIT_TTL_MINUTES=60
-RESERVATION_NO_SHOW_MINUTES=30
-PAYMENT_WEBHOOK_TOLERANCE_SECONDS=300
-
-MIDTRANS_IS_PRODUCTION=false
-MIDTRANS_SERVER_KEY=SB-Mid-server-xxx
-MIDTRANS_CLIENT_KEY=SB-Mid-client-xxx
-MIDTRANS_MERCHANT_ID=Gxxxx
-
-WA_OWNER_NUMBER=628xxxxxxxxxx
-S3_ENDPOINT=
-S3_BUCKET=warungku
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
-SENTRY_DSN=
-CRON_SECRET=
-```
-
-Jangan melakukan commit terhadap `.env`, key pembayaran, token webhook, atau credential database.
-
-## 7. Model Domain dan Database
-
-### Kelompok Entitas
-
-| Domain | Entitas utama |
-|---|---|
-| IAM | `User`, `Role`, `Permission`, `UserOutlet`, `Session` |
-| Outlet | `Tenant`, `Outlet`, `OutletSetting`, `DiningTable` |
-| Katalog | `Category`, `Menu`, `MenuVariant`, `Modifier`, `MenuPrice` |
-| Resep | `Ingredient`, `Unit`, `UnitConversion`, `Recipe`, `RecipeItem` |
-| Order | `Order`, `OrderItem`, `OrderItemModifier`, `KitchenTicket` |
-| Billing | `Bill`, `BillItem`, `Discount`, `Tax`, `Payment`, `Refund` |
-| Shift | `CashShift`, `CashMovement`, `CashCount` |
-| Reservasi | `Reservation`, `ReservationSlot`, `DepositRule`, `BookingDeposit` |
-| Pembelian | `Supplier`, `PurchaseOrder`, `PurchaseOrderItem`, `GoodsReceipt` |
-| Stok | `StockLocation`, `StockMovement`, `StockCount`, `WasteRecord` |
-| Akuntansi | `Account`, `FiscalPeriod`, `JournalEntry`, `JournalLine`, `JournalMapping` |
-| Platform | `OutboxMessage`, `WebhookEvent`, `Notification`, `ActivityLog` |
-
-### ERD Inti
-
-```mermaid
-erDiagram
-  OUTLET ||--o{ DINING_TABLE : has
-  OUTLET ||--o{ ORDER : receives
-  DINING_TABLE ||--o{ ORDER : owns
-  CATEGORY ||--o{ MENU : groups
-  MENU ||--o{ MENU_VARIANT : has
-  MENU ||--o{ RECIPE : uses
-  RECIPE ||--o{ RECIPE_ITEM : contains
-  INGREDIENT ||--o{ RECIPE_ITEM : consumed
-  ORDER ||--o{ ORDER_ITEM : contains
-  ORDER ||--|| BILL : produces
-  BILL ||--o{ PAYMENT : settled_by
-  RESERVATION ||--o{ BOOKING_DEPOSIT : has
-  SUPPLIER ||--o{ PURCHASE_ORDER : receives
-  PURCHASE_ORDER ||--o{ GOODS_RECEIPT : fulfilled_by
-  INGREDIENT ||--o{ STOCK_MOVEMENT : moves
-  JOURNAL_ENTRY ||--o{ JOURNAL_LINE : contains
-  ACCOUNT ||--o{ JOURNAL_LINE : posted_to
-```
-
-### Aturan Data
-
-- gunakan UUID/ULID untuk ID publik;
-- semua data bisnis memiliki `tenantId`, dan sebagian besar memiliki `outletId`;
-- `providerTransactionId`, nomor dokumen, dan `idempotencyKey` harus unik;
-- `StockMovement` bersifat append-only; jangan mengubah stok langsung pada master bahan;
-- `JournalEntry` yang `POSTED` tidak boleh dihapus;
-- simpan snapshot nama, SKU, harga, pajak, serta diskon pada baris transaksi;
-- gunakan optimistic locking (`version`) pada order dan stok yang rawan konflik;
-- indeks minimum: status+waktu, outlet+waktu, provider transaction, ingredient+waktu.
-
-## 8. Status dan State Machine
-
-```text
-ORDER
-BARU -> MENUNGGU_BAYAR -> DITERIMA -> DIMASAK -> SIAP
-     -> DISAJIKAN -> DITAGIH -> LUNAS
-Cabang: KEDALUWARSA, DIBATALKAN, REFUND_SEBAGIAN, REFUND_PENUH
-
-RESERVATION
-MENUNGGU_PEMBAYARAN -> TERKONFIRMASI -> HADIR -> SELESAI
-Cabang: KEDALUWARSA, DIBATALKAN, TIDAK_HADIR
-
-INGREDIENT AVAILABILITY
-AMAN -> MENIPIS -> HABIS
-```
-
-Setiap perubahan status divalidasi melalui domain service. Jangan memperbarui status langsung dari client atau generic CRUD endpoint.
-
-## 9. Aturan Bisnis
-
-### Harga dan Tagihan
-
-```ts
-subtotalBaris = (hargaSnapshot + totalModifier) * quantity;
-subtotal = sum(subtotalBaris);
-diskon = hitungDiskon(subtotal, discountRules);
-penjualanNet = subtotal - diskon;
-serviceCharge = persen(penjualanNet, servicePercent);
-dasarPajak = penjualanNet + serviceCharge;
-pajak = persen(dasarPajak, taxPercent);
-totalSebelumRounding = dasarPajak + pajak;
-total = roundTo(totalSebelumRounding, 100);
-sisaDibayar = total - depositApplied - pembayaranValid;
-```
-
-- hitung ulang seluruh harga di server;
-- gunakan integer Rupiah atau `Decimal`, bukan `number` floating point untuk perhitungan persentase;
-- urutan kalkulasi harus konsisten dan diuji dengan golden test;
-- perubahan harga tidak mengubah transaksi historis;
-- diskon di atas batas role membutuhkan approval;
-- tagihan hanya `LUNAS` jika pembayaran valid memenuhi total;
-- refund menghasilkan dokumen lawan dan jurnal reversal, bukan menghapus pembayaran.
-
-### Uang Muka Reservasi
-
-Admin dapat memilih salah satu mode:
-
-| Mode | Rumus/contoh |
-|---|---|
-| Tanpa uang muka | Rp0 |
-| Persentase | 20% dari minimum spend |
-| Nominal tetap | Rp50.000 per reservasi |
-| Per orang | Rp25.000 × jumlah tamu |
-| Bayar penuh | Seluruh paket dibayar di awal |
-| Minimum belanja | Uang muka menjamin minimum spend |
-
-Kebijakan pembatalan bersifat configurable, misalnya 100% kembali pada H-2, 50% pada H-1, dan 0% pada hari H. Deposit dicatat sebagai **Pendapatan Diterima di Muka**, bukan pendapatan, sampai kunjungan atau no-show diselesaikan.
-
-### Shift Kasir
-
-```text
-expectedCash = openingCash + cashSales + cashIn - cashRefund - cashOut
-cashVariance = physicalCash - expectedCash
-```
-
-- satu user hanya boleh memiliki satu shift aktif per outlet;
-- selisih tidak boleh disembunyikan atau mengubah transaksi sumber;
-- variance harus memiliki alasan dan jurnal otomatis;
-- reopen shift memerlukan otorisasi pemilik.
-
-### Stok dan HPP
-
-Gunakan **moving weighted average** untuk MVP:
-
-```text
-averageCostNew =
-  (onHand × averageCostOld + receivedQty × receivedUnitCost)
-  / (onHand + receivedQty)
-
-recipeCost = Σ(recipeQtyBaseUnit × ingredientAverageCost)
-foodCostPercent = recipeCost / netSellingPrice × 100%
-```
-
-Jenis mutasi minimum:
-
-- `PURCHASE_RECEIPT`
-- `SALE_DEDUCTION`
-- `WASTE`
-- `STOCK_TAKE_ADJUSTMENT`
-- `PURCHASE_RETURN`
-- `TRANSFER_IN`
-- `TRANSFER_OUT`
-- `MANUAL_ADJUSTMENT`
-
-## 10. API Blueprint
-
-### Konvensi
-
-- base URL: `/api/v1`;
-- format: JSON, ISO-8601 UTC, uang integer Rupiah;
-- gunakan Zod untuk request/response schema;
-- route publik menggunakan signed table token;
-- route staf menggunakan session Auth.js dan pemeriksaan permission di server;
-- `Idempotency-Key` wajib untuk membuat order, payment, refund, dan posting stok;
-- error menggunakan `{ code, message, details, requestId }`;
-- list menggunakan cursor pagination, maksimal 100 item.
-
-### Endpoint Utama
+### Endpoint tersedia
 
 | Method | Endpoint | Fungsi |
 |---|---|---|
-| `GET` | `/api/v1/public/menu/:tableToken` | Menu yang tersedia untuk meja |
-| `POST` | `/api/v1/public/orders` | Membuat pesanan QR |
-| `GET` | `/api/v1/orders/:id` | Status pesanan |
-| `PATCH` | `/api/v1/orders/:id/status` | Transisi status tervalidasi |
-| `POST` | `/api/v1/bills/:id/payments` | Memulai/mencatat pembayaran |
-| `POST` | `/api/v1/bills/:id/split` | Membagi tagihan |
-| `POST` | `/api/v1/payments/:id/refund` | Refund dengan approval |
-| `POST` | `/api/v1/webhooks/payments/:provider` | Webhook payment gateway |
-| `GET` | `/api/v1/reservations/availability` | Mencari slot |
-| `POST` | `/api/v1/reservations` | Membuat temporary hold |
-| `POST` | `/api/v1/reservations/:id/deposit` | Payment intent uang muka |
-| `POST` | `/api/v1/shifts/open` | Membuka shift |
-| `POST` | `/api/v1/shifts/:id/close` | Menutup shift |
-| `GET/POST` | `/api/v1/inventory/movements` | Buku mutasi stok |
-| `POST` | `/api/v1/stock-counts/:id/post` | Posting stock opname |
-| `GET` | `/api/v1/reports/profit-loss` | Laporan laba-rugi |
-| `GET` | `/api/v1/reports/stock` | Laporan stok |
+| GET | `/api/v1/catalog/categories` | List kategori management |
+| GET | `/api/v1/catalog/menu-items` | List Menu management |
 
-### Contoh Membuat Pesanan
+Keduanya memerlukan session/permission yang sesuai. List management dapat mengandung item arsip/tidak tersedia, sehingga **tidak boleh ditampilkan langsung sebagai menu publik tanpa kontrak publik tersendiri**.
 
-```http
-POST /api/v1/public/orders
-Content-Type: application/json
-Idempotency-Key: 97e5f779-91ef-4cbe-b7cd-3fabf56cc239
-```
+Kontrak list:
 
 ```json
 {
-  "tableToken": "signed-token",
-  "customerName": "Budi",
-  "items": [
-    {
-      "menuId": "01J...",
-      "variantId": "01J...",
-      "quantity": 2,
-      "modifierIds": ["01J..."],
-      "note": "Gula sedikit"
-    }
-  ],
-  "paymentMode": "PAY_AT_CASHIER"
+  "data": [],
+  "nextCursor": null,
+  "hasMore": false
 }
 ```
 
-### Prosedur Webhook Pembayaran
+Menu management menggunakan `outletId`, `limit` default 50/max 100, filter item, search maksimal 120, dan opaque cursor. Kategori mengikuti kontraknya sendiri, termasuk search maksimal 80.
 
-1. baca raw body dan header signature;
-2. verifikasi HMAC/signature dan toleransi timestamp;
-3. simpan `WebhookEvent` dengan unique `(provider, eventId)`;
-4. cocokkan merchant, order ID, currency, dan amount;
-5. lock bill/payment di database transaction;
-6. jika event telah final, balas `200` tanpa efek ulang;
-7. perbarui payment, bill, jurnal, dan outbox dalam satu transaksi;
-8. worker mengirim struk; reconciliation job membandingkan settlement provider.
+### Target endpoint rilis QR-order
 
-## 11. PWA dan Mode Offline
+Endpoint berikut adalah target, **belum diklaim tersedia**:
 
-### Cache Strategy
-
-| Data/aksi | Offline | Strategi |
+| Method | Target | Fungsi |
 |---|---|---|
-| App shell | Ya | Cache-first, versioned |
-| Menu & harga | Ya, read-only | Stale-while-revalidate |
-| Order tunai POS | Ya | IndexedDB queue + client UUID |
-| Status dapur | Terbatas | Queue + indikator belum sinkron |
-| QRIS/payment online | Tidak | Tampilkan koneksi diperlukan |
-| Konfigurasi admin | Tidak | Snapshot read-only |
+| GET | `/api/v1/public/menu/:tableToken` | Menu publik berdasarkan token meja |
+| POST | `/api/v1/public/orders` | Membuat order dengan idempotency key |
+| GET | `/api/v1/orders/:id` atau public tracking route yang disepakati | Status dengan access policy pelanggan/pengelola yang eksplisit |
+| GET | Staff order list route yang disepakati | Pesanan pada trusted outlet pengelola |
+| PATCH/action | Staff order status boundary yang disepakati | Transisi melalui domain service |
 
-### Bentuk Queue Lokal
+Final path dan bentuk DTO ditinjau terhadap repository sebelum BUILD. Error menggunakan `code`, `message`, `details`, `requestId` sesuai kontrak. Jangan menambahkan endpoint generik yang mengizinkan update status/data tanpa validation dan authorization.
 
-```ts
-type OfflineMutation = {
-  id: string;
-  outletId: string;
-  userId: string;
-  deviceId: string;
-  kind: "CREATE_ORDER" | "UPDATE_KITCHEN_STATUS" | "CASH_PAYMENT";
-  payload: unknown;
-  idempotencyKey: string;
-  createdAtClient: string;
-  attempts: number;
-  status: "PENDING" | "SYNCING" | "SYNCED" | "CONFLICT" | "FAILED";
-};
+## 9. Menjalankan Lokal
+
+### Prasyarat
+
+- Node.js 24 LTS dan pnpm sesuai repository.
+- PostgreSQL 16 yang dapat diakses.
+- Environment dan akun pengelola yang valid.
+
+### Langkah
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm exec prisma generate
 ```
 
-### Resolusi Konflik
+Siapkan environment mengikuti contoh/validator repository. Pada database baru yang memang disiapkan untuk aplikasi, terapkan migration existing secara terkontrol:
 
-- transaksi append-only diterima jika idempotency key belum pernah diproses;
-- server menjadi sumber kebenaran untuk menu, harga, pajak, dan permission;
-- state transition menggunakan `version`; konflik masuk resolution queue;
-- waktu perangkat tidak menjadi waktu posting—gunakan `serverReceivedAt`;
-- transaksi offline maksimal 24 jam atau 500 mutation;
-- tampilkan last sync, jumlah queue, dan tombol retry/export diagnostic.
-
-## 12. Kitchen Display System
-
-KDS menampilkan kartu pesanan berdasarkan stasiun (`BAR`, `KITCHEN`, `DESSERT`) dengan:
-
-- nomor order, meja, waktu masuk, item, modifier, dan catatan;
-- timer hijau/kuning/merah berdasarkan SLA menu;
-- aksi `ACCEPT`, `START`, `READY`, dan `BUMP`;
-- filter stasiun dan outlet;
-- bunyi pesanan baru opsional;
-- reconnect otomatis dan fallback polling;
-- printer kitchen ticket sebagai fallback.
-
-## 13. Akuntansi SAK EMKM
-
-### Chart of Accounts Minimum
-
-| Kode | Akun | Kelompok |
-|---|---|---|
-| 1110 | Kas | Aset |
-| 1120 | Bank / QRIS clearing | Aset |
-| 1130 | Persediaan bahan | Aset |
-| 1210 | Peralatan | Aset |
-| 2110 | Utang pemasok | Liabilitas |
-| 2120 | Pendapatan diterima di muka | Liabilitas |
-| 2130 | Utang pajak | Liabilitas |
-| 3110 | Modal pemilik | Ekuitas |
-| 4110 | Pendapatan penjualan | Pendapatan |
-| 4130 | Diskon/retur | Kontra pendapatan |
-| 5110 | Harga pokok penjualan | Beban |
-| 5120 | Waste/selisih stok | Beban |
-| 6110–6140 | Gaji, sewa, utilitas, pemasaran | Beban operasional |
-| 6310 | Biaya QRIS | Beban |
-| 6320 | Selisih kas | Beban/pendapatan |
-
-### Jurnal Otomatis
-
-| Peristiwa | Debit | Kredit |
-|---|---|---|
-| Penjualan tunai | Kas | Pendapatan + Utang pajak |
-| Penjualan QRIS | QRIS clearing + biaya provider | Pendapatan + Utang pajak |
-| Settlement QRIS | Bank | QRIS clearing |
-| Deposit reservasi | Bank/QRIS | Pendapatan diterima di muka |
-| Deposit digunakan | Pendapatan diterima di muka | Piutang/tagihan |
-| Pembelian bahan | Persediaan | Kas/Utang pemasok |
-| Pemakaian bahan | HPP | Persediaan |
-| Waste/opname minus | Beban waste | Persediaan |
-| Refund | Retur + utang pajak | Kas/Bank |
-| Selisih kas minus | Beban selisih kas | Kas |
-
-Setiap `JournalEntry` wajib memiliki minimal dua baris dan total debit sama dengan total kredit sebelum status menjadi `POSTED`.
-
-### Laporan
-
-- penjualan per outlet, channel, jam, kasir, kategori, dan menu;
-- menu engineering: popularitas vs contribution margin;
-- shift dan selisih kas;
-- nilai stok, mutasi, waste, dan slow-moving;
-- HPP serta food cost aktual vs standar;
-- buku besar dan trial balance;
-- laba-rugi;
-- laporan posisi keuangan;
-- arus kas;
-- audit trail dan rekonsiliasi pembayaran.
-
-## 14. Keamanan dan Privasi
-
-### Kontrol Wajib
-
-- TLS 1.2+, secure cookie, CSRF protection, CSP, dan security headers;
-- Auth.js session dengan rotasi; PIN kasir hanya pada perangkat/outlet terdaftar;
-- RBAC dan scope tenant/outlet diperiksa di server pada setiap query;
-- password Argon2/bcrypt; MFA admin disarankan;
-- validation, output escaping, parameterized query, rate limit;
-- signed token QR meja dengan expiry dan kemampuan revoke;
-- HMAC/signed webhook, anti-replay, idempotency, dan amount verification;
-- immutable audit log untuk diskon, void, refund, harga, stok, dan konfigurasi;
-- enkripsi backup serta object storage;
-- mask nomor telepon dan secret pada log;
-- data pelanggan dikumpulkan seminimal mungkin;
-- consent transaksi dan consent pemasaran dipisahkan.
-
-### Backup dan Disaster Recovery
-
-| Objek | Frekuensi | Retensi |
-|---|---|---|
-| PostgreSQL | PITR + snapshot harian | 14–30 hari; bulanan 12 bulan |
-| Object storage | Versioning | 30–90 hari |
-| Config/IaC | Setiap perubahan di Git | Permanen |
-| Audit/export penting | Bulanan terenkripsi | Sesuai kebijakan |
-
-Target awal: **RPO ≤ 5 menit** dan **RTO ≤ 1 jam**. Uji restore minimal satu kali setiap bulan.
-
-## 15. Observabilitas
-
-- structured JSON logs dengan `requestId`, `tenantId`, `outletId`, dan actor ID;
-- jangan mencatat password, token, full payment payload, atau PII sensitif;
-- metrik traffic, error rate, p50/p95/p99, DB connection, queue lag;
-- business metrics: orders, GMV, payment success, sync backlog, unbalanced journal;
-- Sentry untuk error tracing dan release tracking;
-- alert jika 5xx >1% selama 5 menit, webhook failure meningkat, queue lag >2 menit, jurnal tidak seimbang, atau stok negatif.
-
-## 16. Testing
-
-### Test Pyramid
-
-| Lapisan | Cakupan |
-|---|---|
-| Unit | pricing, tax, deposit, state machine, HPP, journal mapping |
-| Integration | API, RBAC, database transaction, idempotency, outbox |
-| Contract | Midtrans/Xendit dan notification adapter |
-| E2E | QR order, payment, booking, shift, stok, laporan |
-| Performance | menu read, checkout, webhook burst, laporan |
-| Security | SAST, dependency scan, access control, DAST |
-| Recovery | backup restore, retry worker, offline sync |
-
-### Kasus Uji Minimum
-
-- `T01` QR valid, kedaluwarsa, dan dicabut;
-- `T02` harga server berbeda dari cache client;
-- `T03` modifier, diskon, pajak, service, pembulatan;
-- `T04` webhook sah, palsu, ganda, dan out-of-order;
-- `T05` split bill dan multi-payment;
-- `T06` void/refund dengan dan tanpa permission;
-- `T07` buka/tutup shift dan selisih kas;
-- `T08` reservasi bersamaan pada slot terakhir;
-- `T09` deposit expiry dan refund bertingkat;
-- `T10` KDS menolak transisi status tidak valid;
-- `T11` resep mengurangi stok dengan unit conversion;
-- `T12` penerimaan parsial memperbarui moving average;
-- `T13` stock opname plus/minus dan approval;
-- `T14` setiap jurnal seimbang;
-- `T15` periode terkunci menolak posting;
-- `T16` offline order tersinkron tanpa duplikat;
-- `T17` konflik offline masuk resolution queue;
-- `T18` user tidak dapat mengakses outlet lain;
-- `T19` laporan sesuai filter dan jurnal sumber;
-- `T20` backup dapat dipulihkan;
-- `T21` 100 pengguna bersamaan memenuhi SLO;
-- `T22` navigasi keyboard, kontras, dan label form;
-- `T23` PII dan secret tidak muncul di log;
-- `T24` timezone dan pergantian hari tidak menggandakan nomor dokumen.
-
-### Exit Criteria
-
-- tidak ada defect Critical/High terbuka;
-- 100% alur pembayaran, stok, shift, serta jurnal lulus;
-- security scan tidak memiliki temuan kritis;
-- performance memenuhi SLO;
-- restore dan rollback berhasil;
-- UAT ditandatangani pemilik serta perwakilan outlet.
-
-## 17. CI/CD dan Deployment
-
-```text
-commit
-  -> lint + typecheck
-  -> unit + integration test
-  -> SAST + dependency scan
-  -> build immutable artifact
-  -> deploy preview/staging
-  -> migration dry-run
-  -> Playwright E2E
-  -> approval
-  -> backup
-  -> production canary
-  -> smoke test
-  -> promote atau rollback
+```powershell
+pnpm exec prisma migrate deploy
+pnpm dev
 ```
 
-### Opsi Deployment Rekomendasi
+Buka `http://localhost:3000`, login, dan buka dashboard.
 
-**Serverless sederhana:**
+Bootstrap tenant/outlet/admin mengikuti script actual repository. Periksa parameter terlebih dahulu. Jangan mengulang bootstrap pada database berisi akun hanya untuk memperbaiki login.
 
-- Next.js: Vercel;
-- PostgreSQL: Neon/Supabase;
-- Storage: Cloudflare R2/S3;
-- Cron: Vercel Cron/Trigger.dev;
-- monitoring: Sentry.
+> Jangan menggunakan `db push`, `migrate reset`, atau seed ulang sebagai recovery umum. Migration, bootstrap, dan mutation nyata harus menggunakan target database yang diketahui dan persetujuan yang jelas.
 
-**Container:**
+## 10. Environment dan Secrets
 
-- Next.js standalone Docker image;
-- Railway/Render/Fly.io/VPS;
-- managed PostgreSQL;
-- worker process terpisah;
-- reverse proxy dan CDN.
+Contoh placeholder minimum, bukan kredensial siap pakai:
 
-### Database Migration
-
-- migration harus backward-compatible;
-- gunakan expand-and-contract untuk rename/drop kolom;
-- jangan menghapus kolom pada rilis yang sama dengan perubahan aplikasi;
-- lakukan backup dan dry-run pada staging;
-- migration finansial harus memiliki integrity query dan rollback/forward-fix plan.
-
-## 18. Scripts
-
-```json
-{
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
-  }
-}
+```dotenv
+DATABASE_URL=postgresql://APP_USER:APP_PASSWORD@DB_HOST:5432/warungku
+AUTH_SECRET=REPLACE_WITH_A_STRONG_RANDOM_SECRET
 ```
 
-## 19. Roadmap Implementasi
+- Nama environment tambahan mengikuti configuration actual, bukan dianggap tersedia karena disebut README.
+- Domain/origin Auth.js disesuaikan dengan hosting HTTPS.
+- QR signing/access-token secrets menggunakan mekanisme konfigurasi yang ditinjau saat implementasi; tidak boleh hardcoded.
+- Deployment menggunakan secrets terpisah dari development.
+- Jangan commit `.env`, database credentials, session cookies, password, atau token aktif.
+- Secrets tidak boleh diberi prefix `NEXT_PUBLIC_`.
+- Payment gateway/S3 secrets tidak diperlukan untuk sekadar menyelesaikan alur QR-order tanpa pembayaran online/upload.
 
-| Minggu | Fokus | Output |
-|---:|---|---|
-| 1 | Discovery dan fondasi | backlog, wireframe, model data, ADR |
-| 2 | Platform | Auth.js, RBAC, outlet, CI/CD, observability |
-| 3 | Katalog dan QR | menu, harga, modifier, table token |
-| 4 | Ordering dan KDS | cart, order, state machine, kitchen display |
-| 5 | POS dan shift | bill, diskon, pajak, split, kas |
-| 6 | Pembayaran | QRIS, webhook, receipt, reconciliation |
-| 7 | Reservasi | availability, deposit rule, reminder |
-| 8 | Inventory | bahan, resep, movement, purchase, opname |
-| 9 | Akuntansi | CoA, mapping jurnal, laporan dasar |
-| 10 | PWA offline | cache, queue, conflict resolution |
-| 11 | Hardening | keamanan, performa, DR, dokumentasi |
-| 12 | Pilot dan go-live | UAT, pelatihan, cutover, hypercare |
+## 11. Pengujian
 
-### Tim Minimum
+Verification dasar:
 
-- Product Owner/SME: 0,3–0,5 FTE;
-- System Analyst: 0,5 FTE;
-- UI/UX: 0,3 FTE;
-- Full-stack Next.js developer: 2 FTE;
-- QA: 0,5–1 FTE;
-- DevOps/Security: 0,2–0,3 FTE;
-- Akuntan advisor: ad hoc.
-
-## 20. Urutan Vibe Coding
-
-Jangan meminta AI membangun seluruh aplikasi dalam satu prompt. Gunakan urutan berikut dan lakukan commit setelah setiap fase lulus test.
-
-### Prompt 1 — Fondasi
-
-```text
-Buat fondasi Next.js 15 App Router TypeScript strict untuk aplikasi Warungku.
-Gunakan Tailwind, shadcn/ui, Prisma PostgreSQL, Auth.js v5, Zod, Vitest,
-dan Playwright. Buat struktur modular berdasarkan domain. Tambahkan lint,
-typecheck, test, env validation, error boundary, request ID, structured logger,
-dan seed satu tenant/outlet. Jangan buat fitur bisnis dulu.
+```powershell
+pnpm run typecheck
+pnpm run lint
+pnpm test
+pnpm run test:coverage
+pnpm run build
 ```
 
-### Prompt 2 — Identity dan RBAC
+Tests existing mencakup domain dasar, kategori, scoped-query/cursor, serta management API/client. Unit/DOM tests dengan mocks tidak disamakan dengan seluruh integration database atau E2E.
 
-```text
-Implementasikan Auth.js Credentials, password hash, PIN kasir, role dan
-permission, user-outlet scope, middleware route protection, dan server-side
-authorization helper. Tambahkan audit untuk login gagal dan perubahan role.
-Buat unit serta integration test termasuk akses lintas outlet yang harus ditolak.
-```
+### Acceptance tests wajib QR-order
 
-### Prompt 3 — Katalog dan QR
+- [ ] Token valid membuka meja/outlet yang benar.
+- [ ] Token invalid/expired/revoked dan meja inactive ditolak.
+- [ ] Menu inactive/archived/sold-out atau berkategori unavailable tidak dapat dipesan.
+- [ ] Harga client yang dimanipulasi tidak menjadi harga order.
+- [ ] Quantity/catatan/request invalid ditolak.
+- [ ] Order dan items tersimpan atomik dengan snapshot.
+- [ ] Klik ulang/retry dengan idempotency key sama tidak menghasilkan dua order.
+- [ ] Key sama dengan payload berbeda tidak diterima sebagai transaksi baru secara diam-diam.
+- [ ] Request publik tidak bisa menyisipkan tenant/outlet/meja lain.
+- [ ] Staff list/status dibatasi permission dan scope server.
+- [ ] Transisi invalid/stale version ditolak tanpa overwrite otomatis.
+- [ ] Pelanggan tidak bisa membaca order pelanggan lain hanya dengan mengganti ID.
+- [ ] Status pelanggan sesuai perubahan oleh pengelola.
+- [ ] Mobile/keyboard/loading/error/retry bekerja pada jaringan perangkat nyata.
+- [ ] Alur end-to-end diuji pada database dan deployment tujuan.
 
-```text
-Implementasikan Category, Menu, MenuVariant, Modifier, Ingredient, Recipe,
-dan DiningTable. Buat admin CRUD dengan Zod, upload gambar, QR signed token
-yang bisa expired/revoke, serta halaman publik /menu/[tableToken]. Harga dan
-ketersediaan harus dihitung server-side. Sertakan migration, seed, dan test.
-```
+Data uji digunakan dengan persetujuan; jangan melakukan pengujian mutation pada data usaha nyata tanpa rencana.
 
-### Prompt 4 — Ordering dan KDS
+## 12. Deployment Rilis Awal
 
-```text
-Implementasikan Order aggregate dan state machine. Buat endpoint idempoten
-POST /api/v1/public/orders, keranjang pelanggan, POS walk-in, dan KDS real-time.
-Validasi ulang harga, modifier, status menu, dan token meja di transaction.
-Simpan snapshot harga. Tambahkan optimistic version dan seluruh test transisi.
-```
+Pilih satu jalur hosting Next.js dan PostgreSQL yang kompatibel, misalnya Vercel + Neon/Supabase atau hosting Node.js lain. Deployment belum dianggap selesai hanya karena `pnpm build` lokal berhasil.
 
-### Prompt 5 — Billing, Shift, dan Payment
+### Persiapan
 
-```text
-Implementasikan Bill, Payment, Refund, CashShift, pajak, service charge,
-diskon berbatas role, pembulatan Rp100, split bill, multi-payment, dan tutup
-shift. Buat adapter Midtrans sandbox dan webhook HMAC yang idempoten.
-Payment, bill, jurnal, dan outbox harus commit dalam satu DB transaction.
-```
+- [ ] Branch/commit deployment ditentukan.
+- [ ] Database tujuan terpisah dari development dan berisi dataset demo yang disetujui.
+- [ ] Environment/auth/QR secrets production diatur melalui secret manager.
+- [ ] Origin/URL aplikasi sesuai domain HTTPS.
+- [ ] Install lockfile dan Prisma generate bekerja pada build hosting.
+- [ ] Migration dijalankan sebagai release operation yang terkontrol, bukan per-request.
+- [ ] Akun demo disiapkan tanpa password ditulis publik.
+- [ ] QR/token demo dihasilkan untuk meja database deployment, bukan meja development.
+- [ ] Typecheck/lint/tests/build lulus.
+- [ ] Backup dan recovery dasar tersedia sebelum mutation testing.
+- [ ] Error/secret masking dan pembatasan endpoint publik diperiksa.
 
-### Prompt 6 — Reservasi
+### Smoke test deployment
 
-```text
-Implementasikan availability berdasarkan kapasitas, durasi dan buffer.
-Tambahkan temporary hold, expiry 60 menit, enam mode deposit, payment intent,
-reminder H-1, check-in, no-show 30 menit, pembatalan/refund bertingkat,
-dan liability accounting. Uji race condition pada slot terakhir.
-```
+- [ ] Login/logout dan dashboard protection bekerja.
+- [ ] Kategori/Menu/Meja sesuai outlet dan permission.
+- [ ] Scan QR dari HP membuka menu deployment dan meja yang benar.
+- [ ] Pelanggan dapat mengirim order dan menerima konfirmasi.
+- [ ] Order terlihat pada dashboard pengelola.
+- [ ] Perubahan status pengelola terlihat pada pelanggan.
+- [ ] Retry/klik ulang tidak membuat order ganda.
+- [ ] Token invalid/revoked dan akses order tidak berizin ditolak.
+- [ ] Mutation katalog diuji pada data demo.
+- [ ] Desktop/mobile/focus/kontras terbaca.
+- [ ] Tidak ada secrets atau informasi internal sensitif pada respons/log/browser bundle.
 
-### Prompt 7 — Inventory dan Pembelian
+Deployment demo akademik bukan sertifikasi kesiapan finansial/operasional restoran penuh.
 
-```text
-Implementasikan unit conversion, recipe/BOM, StockMovement append-only,
-minimum stock, supplier, purchase order, goods receipt parsial, return, waste,
-dan stock count. Gunakan moving weighted average. Penjualan posted harus
-menghasilkan sale deduction dan HPP. Jangan pernah mengubah stok langsung.
-```
+## 13. Skenario Demonstrasi UAS
 
-### Prompt 8 — Akuntansi dan Laporan
+1. Pengelola login dan memilih outlet.
+2. Pengelola menunjukkan kategori, Menu, dan meja demo.
+3. QR meja dibuka dari HP pelanggan.
+4. Pelanggan memilih Menu, quantity, dan catatan.
+5. Pelanggan mengirim pesanan dan memperoleh nomor/konfirmasi.
+6. Pengelola melihat order yang sama pada dashboard.
+7. Pengelola memperbarui status; pelanggan melihat hasilnya.
+8. Tunjukkan validasi atau penolakan request invalid pada data uji bila diperlukan.
+9. Jelaskan bahwa pembayaran dilakukan di kasir dan belum diproses payment gateway oleh aplikasi.
+10. Tunjukkan batas scope serta roadmap lanjutan.
 
-```text
-Implementasikan Account, FiscalPeriod, JournalEntry, JournalLine, mapping
-event-to-journal, posting, reversal, period lock, ledger, trial balance,
-laba-rugi, posisi keuangan, dan arus kas. Setiap jurnal harus debit=kredit.
-Semua angka laporan harus dapat drill-down sampai dokumen sumber.
-```
+Dataset demonstrasi terpisah dari transaksi usaha nyata. Jangan mengklaim status pembayaran lunas atau stok berkurang otomatis jika fitur tersebut tidak tersedia.
 
-### Prompt 9 — PWA Offline
+## 14. Definition of Done Rilis Awal
 
-```text
-Tambahkan Serwist, manifest, install prompt, app shell cache, Dexie queue,
-client UUID dan Idempotency-Key. Izinkan order tunai dan status dapur offline,
-tetapi blok QRIS. Tambahkan indikator koneksi, last sync, retry, export
-diagnostic, conflict queue, batas 24 jam/500 mutation, dan Playwright test.
-```
+Rilis QR-order selesai jika:
 
-### Prompt 10 — Production Hardening
+- scope wajib pada bagian 2 berjalan di deployment tujuan;
+- pelanggan benar-benar dapat scan QR dan membuat order database;
+- pengelola menerima order dan mengubah status melalui jalur tervalidasi;
+- harga, availability, token, permission, dan tenant/outlet scope diperiksa server;
+- transaksi order atomik dan idempotency terbukti;
+- pelanggan hanya bisa membaca status order yang diizinkan;
+- validation/loading/empty/error/success/disabled states tersedia sesuai konteks;
+- audit pada mutation sensitif yang relevan tersedia;
+- verification otomatis dan integration/browser tests yang relevan lulus;
+- smoke test deployment pada HP dan dashboard selesai;
+- tidak ada masalah kritis atau secrets terekspos;
+- panduan setup/demo/deployment/recovery dasar dapat digunakan.
 
-```text
-Tambahkan CSP, rate limit, PII masking, webhook anti-replay, Sentry,
-OpenTelemetry, health/readiness route, backup runbook, payment reconciliation,
-alerts, load test, accessibility test, dependency scan, Dockerfile,
-dan CI/CD production dengan canary serta rollback.
-```
+**Dashboard kategori saja, demo localStorage, atau API management saja belum memenuhi Definition of Done ini.** Payment gateway, inventory, akuntansi, reservasi, dan offline tidak menjadi blocker rilis awal.
 
-### Aturan Saat Menggunakan AI Coding Agent
+## 15. Urutan Pengembangan
 
-1. minta agent membaca README dan file terkait sebelum mengubah kode;
-2. batasi satu domain atau satu acceptance criterion per tugas;
-3. minta rencana dan daftar file sebelum implementasi besar;
-4. wajibkan migration, validation, authorization, audit, dan test;
-5. jangan menerima `any`, mock permanen, hard-coded secret, atau TODO pada jalur uang;
-6. jalankan `lint`, `typecheck`, unit test, dan E2E sebelum commit;
-7. review diff secara manual, terutama pembayaran, stok, jurnal, dan permission;
-8. commit kecil dan gunakan conventional commits.
+1. Finalisasi UI management Menu minimum dengan core/exhaustive tests.
+2. Pengelolaan meja dan mekanisme token/QR.
+3. Kontrak/API menu publik dan halaman menu pelanggan.
+4. Keranjang, public order endpoint, trusted token context, dan idempotency.
+5. Konfirmasi/tracking pelanggan dan staff order list/status UI.
+6. Integration/E2E alur QR-order dan hardening publik yang relevan.
+7. Deployment, smoke test, dokumentasi, dan demonstrasi.
 
-## 21. Definition of Done
+Rencana file/phase ditinjau sebelum BUILD. Beberapa domain existing dapat digunakan kembali, tetapi dependency dan access policy harus diperiksa dahulu. Jadwal diestimasi setelah scope ini dicocokkan dengan kode; estimasi rilis katalog tidak otomatis berlaku untuk rilis QR-order.
 
-Sebuah fitur dianggap selesai jika:
+## 16. Roadmap Setelah Rilis Awal
 
-- acceptance criteria terpenuhi;
-- UI memiliki loading, empty, error, success, dan disabled state;
-- Zod validation berjalan pada boundary;
-- authorization dan outlet scope diuji di server;
-- aksi sensitif menghasilkan audit log;
-- unit/integration/E2E yang relevan lulus;
-- tidak ada critical lint, type, dependency, atau security error;
-- migration backward-compatible;
-- log, metrics, dan error handling tersedia;
-- dokumentasi API/runbook diperbarui.
+- Archive/restore Menu jika belum termasuk rilis minimum, katalog lebih lengkap, varian/modifier/alergi, upload gambar.
+- KDS multi-stasiun/realtime dan kitchen printer.
+- POS/billing, pajak/service/diskon, shift, payment gateway, refund, reconciliation.
+- Reservasi/deposit.
+- Inventory/resep/procurement/HPP.
+- Akuntansi dan laporan.
+- PWA offline.
+- Admin/approval, observability, security/recovery, serta pengujian produksi yang lebih luas.
 
-## 22. Checklist Go-Live
+Roadmap adalah arah pengembangan berkelanjutan, bukan klaim fitur sudah tersedia atau janji tenggat. Rilis awal mempertahankan pengalaman utama Warungku: **pesan melalui QR meja dan diterima pengelola**.
 
-- [ ] Outlet, meja, jam buka, zona waktu, pajak, service, dan rounding benar.
-- [ ] Menu, harga, modifier, alergi, resep, unit, dan stok awal disetujui.
-- [ ] QR meja diuji pada perangkat nyata dan token dapat dicabut.
-- [ ] Role, permission, PIN, serta scope outlet diuji.
-- [ ] Midtrans production key, signature, callback, settlement, dan refund diuji.
-- [ ] Printer 58 mm dan Kitchen Display diuji pada jaringan outlet.
-- [ ] Mode offline, reconnect, conflict, dan clock skew diuji.
-- [ ] CoA, opening balance, mapping jurnal, serta laporan divalidasi akuntan.
-- [ ] Backup, restore, rollback, alert, dan kontak eskalasi siap.
-- [ ] Pelatihan satu shift penuh dan UAT selesai.
-- [ ] Masa hypercare serta jalur dukungan telah diumumkan.
+## 17. Workflow dan Lisensi
 
-## 23. Risiko Utama
+- Baca README/instruksi repository dan kontrak actual sebelum mengubah kode.
+- Batasi satu domain/acceptance criterion per fase.
+- Tentukan exact write scope dan tests sebelum implementasi.
+- Pertahankan authorization, validation, audit, dan regression coverage.
+- Jangan menerima hardcoded secrets, `any`/suppression sembarangan, atau TODO pada jalur transaksi inti.
+- Review diff dan lakukan conventional commit setelah fase lolos serta diizinkan.
+- Database/deployment/mutation nyata menggunakan target yang jelas dan persetujuan.
+- Jangan reset database atau melonggarkan permission hanya agar demo berhasil.
 
-| Risiko | Mitigasi |
-|---|---|
-| Pegawai sulit beradaptasi | Libatkan sejak awal, training mode, champion outlet |
-| Internet mati | Offline queue, hotspot cadangan |
-| Webhook ganda/terlambat | Unique event, idempotency, reconciliation |
-| Resep tidak akurat | Penimbangan, kalibrasi, opname mingguan |
-| Kebocoran diskon/void | Limit role, approval, immutable audit |
-| No-show reservasi | Deposit, reminder, grace period |
-| Data hilang | PITR, offsite backup, restore drill |
-| Laporan salah | Balanced journal, reconciliation, period lock |
-| PII bocor | Minimalisasi, masking, RBAC, incident response |
-| Scope creep | MVP gate, backlog, change control |
-
-## 24. Konvensi Nomor Dokumen
-
-| Objek | Contoh |
-|---|---|
-| Order | `OUT-T01-20260923-0042` |
-| Bill | `BILL-T01-20260923-0038` |
-| Reservasi | `RSV-T01-20260923-0011` |
-| Purchase Order | `PO-2026-000317` |
-| Goods Receipt | `GRN-2026-000412` |
-| Jurnal | `JV-2026-000128` |
-| SKU bahan | `BB-KOPI-ARABIKA-001` |
-
-## 25. Lisensi dan Status
-
-Blueprint ini merupakan baseline pengembangan. Sesuaikan pajak daerah, kebijakan refund, retensi data, chart of accounts, dan ketentuan pembayaran dengan lokasi serta badan usaha yang sebenarnya sebelum produksi.
-
----
-
-**Rekomendasi awal:** bangun modular monolith Next.js, mulai dari satu outlet, gunakan payment sandbox sampai rekonsiliasi terbukti benar, lakukan pilot dua minggu, ukur KPI selama 90 hari, lalu aktifkan multi-outlet setelah proses operasional stabil.
+Lisensi: **Proprietary**, mengikuti baseline dan ketentuan pemilik proyek. README ini tidak menetapkan lisensi open-source baru.
