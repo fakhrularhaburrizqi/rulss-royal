@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fetchMenuItems } from "@/lib/api/menu-items";
 import { MenuItemTable } from "@/app/dashboard/menu/MenuItemTable";
@@ -9,6 +10,21 @@ import type { ManagementMenuItemListItem, PaginatedMenuItemsResult } from "@/lib
 
 vi.mock("@/lib/api/menu-items", () => ({
   fetchMenuItems: vi.fn(),
+}));
+
+vi.mock("@/lib/api/categories", () => ({
+  fetchCategories: vi.fn().mockResolvedValue({
+    data: [{ id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }],
+    nextCursor: null,
+    hasMore: false,
+  }),
+}));
+
+const mockCreateMenuItemAction = vi.hoisted(() => vi.fn());
+const mockUpdateMenuItemAction = vi.hoisted(() => vi.fn());
+vi.mock("@/app/dashboard/menu-actions", () => ({
+  createMenuItemAction: mockCreateMenuItemAction,
+  updateMenuItemAction: mockUpdateMenuItemAction,
 }));
 
 const mockedFetchMenuItems = vi.mocked(fetchMenuItems);
@@ -288,5 +304,39 @@ describe("MenuItemTable DOM", () => {
 
     expect(prevButton).toBeDisabled();
     expect(nextButton).toBeDisabled();
+  });
+
+  it("permission false: Tambah Menu and Edit action buttons not rendered", async () => {
+    renderWithProvider(<MenuItemTable authScope={authScope} outletId={outletId} canManageCatalog={false} />);
+    await waitFor(() => expect(screen.getByText("Nasi Goreng")).toBeInTheDocument());
+
+    expect(screen.queryByRole("button", { name: /Tambah Menu/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Edit Nasi Goreng/i })).not.toBeInTheDocument();
+  });
+
+  it("permission true: Tambah Menu and Edit action buttons rendered, opening create and edit dialogs", async () => {
+    renderWithProvider(<MenuItemTable authScope={authScope} outletId={outletId} canManageCatalog={true} />);
+    await waitFor(() => expect(screen.getByText("Nasi Goreng")).toBeInTheDocument());
+
+    const addButton = screen.getByRole("button", { name: /Tambah Menu/i });
+    expect(addButton).toBeInTheDocument();
+
+    await userEvent.click(addButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Tambah Menu Baru" })).toBeInTheDocument();
+
+    // Close create dialog
+    const cancelButton = screen.getByRole("button", { name: /Batal/i });
+    await userEvent.click(cancelButton);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // Click edit for Nasi Goreng
+    const editButton = screen.getByRole("button", { name: /Edit Nasi Goreng/i });
+    expect(editButton).toBeInTheDocument();
+    await userEvent.click(editButton);
+
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Edit Menu" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nama Menu *")).toHaveValue("Nasi Goreng");
   });
 });

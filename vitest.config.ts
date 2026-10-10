@@ -45,6 +45,8 @@ export default defineConfig({
             "tests/unit/useMenuItemsQuery.test.tsx",
             "tests/unit/MenuItemTable.test.tsx",
             "tests/unit/DashboardNavigation.test.tsx",
+            "tests/unit/MenuCreateDialog.test.tsx",
+            "tests/unit/MenuEditDialog.test.tsx",
           ],
           setupFiles: ["tests/setup-dom.ts"],
           testTimeout: 40000,

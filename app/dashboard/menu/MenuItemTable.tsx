@@ -1,17 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useMenuItemsQuery } from "./useMenuItemsQuery";
+import { MenuCreateDialog } from "./MenuCreateDialog";
+import { MenuEditDialog } from "./MenuEditDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import type { MenuItemAuthScope } from "@/lib/dashboard/menu-item-query-keys";
-import type { PaginatedMenuItemsResult } from "@/lib/services/menu-item-query.service";
+import type { ManagementMenuItemListItem, PaginatedMenuItemsResult } from "@/lib/services/menu-item-query.service";
 
 interface MenuItemTableProps {
   authScope: MenuItemAuthScope;
   outletId: string;
   initialData?: PaginatedMenuItemsResult;
   initialDataUpdatedAt?: number;
+  canManageCatalog?: boolean;
 }
 
 function formatRupiah(value: number): string {
@@ -23,6 +27,7 @@ export function MenuItemTable({
   outletId,
   initialData,
   initialDataUpdatedAt,
+  canManageCatalog = false,
 }: MenuItemTableProps) {
   const {
     filter,
@@ -47,6 +52,24 @@ export function MenuItemTable({
     initialDataUpdatedAt,
   });
 
+  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit">("closed");
+  const [selectedMenuItem, setSelectedMenuItem] = useState<ManagementMenuItemListItem | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const handleOpenCreate = useCallback(() => {
+    setDialogMode("create");
+  }, []);
+
+  const handleOpenEdit = useCallback((item: ManagementMenuItemListItem) => {
+    setSelectedMenuItem(item);
+    setDialogMode("edit");
+  }, []);
+
+  const handleCloseDialog = useCallback(() => {
+    setDialogMode("closed");
+    setSelectedMenuItem(null);
+  }, []);
+
   const rows = data?.data ?? [];
   const err = (error as (Error & { code?: string; status?: number }) | null);
 
@@ -66,39 +89,51 @@ export function MenuItemTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="w-full sm:w-64">
-          <Label htmlFor="menu-filter" className="sr-only">
-            Filter menu
-          </Label>
-          <select
-            id="menu-filter"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as "all" | "active" | "inactive" | "archived")}
-            disabled={isAuthError}
-            className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="w-full sm:w-64">
+            <Label htmlFor="menu-filter" className="sr-only">
+              Filter menu
+            </Label>
+            <select
+              id="menu-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as "all" | "active" | "inactive" | "archived")}
+              disabled={isAuthError}
+              className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
+            >
+              <option value="all">Semua</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Tidak Aktif</option>
+              <option value="archived">Arsip</option>
+            </select>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Label htmlFor="menu-search" className="sr-only">
+              Cari menu
+            </Label>
+            <input
+              id="menu-search"
+              type="search"
+              value={draftSearch}
+              onChange={(e) => setDraftSearch(e.target.value)}
+              placeholder="Cari nama menu..."
+              maxLength={120}
+              disabled={isAuthError}
+              className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 placeholder:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
+            />
+          </div>
+        </div>
+
+        {canManageCatalog && !isAuthError && (
+          <Button
+            ref={triggerRef}
+            onClick={handleOpenCreate}
+            className="whitespace-nowrap"
           >
-            <option value="all">Semua</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Tidak Aktif</option>
-            <option value="archived">Arsip</option>
-          </select>
-        </div>
-        <div className="relative w-full sm:w-80">
-          <Label htmlFor="menu-search" className="sr-only">
-            Cari menu
-          </Label>
-          <input
-            id="menu-search"
-            type="search"
-            value={draftSearch}
-            onChange={(e) => setDraftSearch(e.target.value)}
-            placeholder="Cari nama menu..."
-            maxLength={120}
-            disabled={isAuthError}
-            className="w-full rounded-lg border border-emerald-900/10 bg-white px-3 py-2 text-sm font-medium text-emerald-900 placeholder:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
-          />
-        </div>
+            Tambah Menu
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -144,12 +179,15 @@ export function MenuItemTable({
                     <TableHead className="text-right text-emerald-800">Harga</TableHead>
                     <TableHead className="text-emerald-800">Status item</TableHead>
                     <TableHead className="text-emerald-800">Sold-out</TableHead>
+                    {canManageCatalog && !isAuthError && (
+                      <TableHead className="w-[120px] text-emerald-800">Aksi</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-emerald-600">
+                      <TableCell colSpan={canManageCatalog && !isAuthError ? 6 : 5} className="py-8 text-center text-emerald-600">
                         Tidak ada menu ditemukan
                       </TableCell>
                     </TableRow>
@@ -193,6 +231,19 @@ export function MenuItemTable({
                               </span>
                             )}
                           </TableCell>
+                          {canManageCatalog && !isAuthError && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenEdit(row)}
+                                aria-label={`Edit ${row.name}`}
+                                className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900"
+                              >
+                                Edit
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })
@@ -211,7 +262,7 @@ export function MenuItemTable({
                 <button
                   type="button"
                   onClick={goToPrevious}
-                  disabled={!canGoPrevious || isLoading || isFetching}
+                  disabled={!canGoPrevious}
                   className="inline-flex items-center rounded-lg border border-emerald-900/30 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Halaman sebelumnya"
                 >
@@ -220,7 +271,7 @@ export function MenuItemTable({
                 <button
                   type="button"
                   onClick={goToNext}
-                  disabled={!canGoNext || !hasMore || isLoading || isFetching}
+                  disabled={!canGoNext}
                   className="inline-flex items-center rounded-lg border border-emerald-900/30 bg-white px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Halaman selanjutnya"
                 >
@@ -231,6 +282,25 @@ export function MenuItemTable({
           </div>
         )}
       </div>
+
+      <MenuCreateDialog
+        isOpen={dialogMode === "create"}
+        onClose={handleCloseDialog}
+        outletId={outletId}
+        authScope={authScope}
+        triggerRef={triggerRef}
+      />
+
+      {selectedMenuItem && (
+        <MenuEditDialog
+          isOpen={dialogMode === "edit"}
+          onClose={handleCloseDialog}
+          outletId={outletId}
+          authScope={authScope}
+          menuItem={selectedMenuItem}
+          triggerRef={triggerRef}
+        />
+      )}
     </div>
   );
 }
