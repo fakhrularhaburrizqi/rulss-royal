@@ -12,7 +12,7 @@ type DashboardNavigationProps = {
   currentPath?: string;
 };
 
-const READY_ROUTES = new Set(["/dashboard/kategori", "/dashboard/menu"]);
+const READY_ROUTES = new Set(["/dashboard/kategori", "/dashboard/menu", "/dashboard/meja"]);
 
 export function DashboardNavigation({ resolution, currentPath }: DashboardNavigationProps) {
   const pathname = usePathname();

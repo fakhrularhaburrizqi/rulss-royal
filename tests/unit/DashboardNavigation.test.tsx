@@ -28,7 +28,7 @@ const fullCapabilities = {
 };
 
 describe("DashboardNavigation menu readiness", () => {
-  it("renders Menu as a live outlet link while authorized, with Meja still coming soon", () => {
+  it("renders Menu, Kategori, and Meja as live outlet links while authorized", () => {
     render(
       <DashboardNavigation resolution={selectedResolution(fullCapabilities)} currentPath="/dashboard" />
     );
@@ -39,25 +39,24 @@ describe("DashboardNavigation menu readiness", () => {
     const kategoriLink = screen.getByRole("link", { name: "Kategori" });
     expect(kategoriLink).toHaveAttribute("href", "/dashboard/kategori?outlet=outlet-1");
 
-    expect(screen.queryByRole("link", { name: "Meja" })).not.toBeInTheDocument();
-    const mejaItem = screen.getByText("Meja").closest("li") as HTMLElement;
-    const mejaBadge = within(mejaItem).getByText("Segera tersedia");
-    expect(mejaBadge).toBeInTheDocument();
-    expect(mejaItem.querySelector("[aria-disabled='true']")).not.toBeNull();
+    const mejaLink = screen.getByRole("link", { name: "Meja" });
+    expect(mejaLink).toHaveAttribute("href", "/dashboard/meja?outlet=outlet-1");
 
-    expect(screen.getAllByText("Segera tersedia")).toHaveLength(1);
+    expect(screen.queryByText("Segera tersedia")).not.toBeInTheDocument();
   });
 
-  it("keeps Kategori and Menu links free of the coming-soon badge", () => {
+  it("keeps Kategori, Menu, and Meja links free of the coming-soon badge", () => {
     render(
       <DashboardNavigation resolution={selectedResolution(fullCapabilities)} currentPath="/dashboard" />
     );
 
     const menuLi = screen.getByRole("link", { name: "Menu" }).closest("li") as HTMLElement;
     const kategoriLi = screen.getByRole("link", { name: "Kategori" }).closest("li") as HTMLElement;
+    const mejaLi = screen.getByRole("link", { name: "Meja" }).closest("li") as HTMLElement;
 
     expect(within(menuLi).queryByText("Segera tersedia")).not.toBeInTheDocument();
     expect(within(kategoriLi).queryByText("Segera tersedia")).not.toBeInTheDocument();
+    expect(within(mejaLi).queryByText("Segera tersedia")).not.toBeInTheDocument();
   });
 
   it("hides Menu and Kategori when canViewCatalog is false", () => {
@@ -71,7 +70,7 @@ describe("DashboardNavigation menu readiness", () => {
     expect(screen.queryByRole("link", { name: "Menu" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Kategori" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByText("Meja")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Meja" })).toBeInTheDocument();
   });
 
   it("hides Meja when canViewTables is false", () => {
@@ -82,7 +81,7 @@ describe("DashboardNavigation menu readiness", () => {
       />
     );
 
-    expect(screen.queryByText("Meja")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Meja" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Menu" })).toBeInTheDocument();
   });
 
@@ -98,7 +97,7 @@ describe("DashboardNavigation menu readiness", () => {
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", "/dashboard");
     expect(screen.queryByRole("link", { name: "Menu" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Meja")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Meja" })).not.toBeInTheDocument();
   });
 
   it("marks the Menu link with aria-current on the menu page", () => {
