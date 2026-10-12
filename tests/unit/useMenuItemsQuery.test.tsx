@@ -638,6 +638,7 @@ describe("useMenuItemsQuery behavior", () => {
       for (let i = 0; i < 3; i++) {
         await act(async () => {
           vi.advanceTimersByTime(5000);
+          await vi.runAllTimersAsync();
         });
       }
 
