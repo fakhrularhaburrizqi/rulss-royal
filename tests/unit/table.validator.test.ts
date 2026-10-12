@@ -7,10 +7,12 @@ import {
   tableDeactivateSchema,
   tableReactivateSchema,
   tableUpdateSchema,
+  generateTableTokenSchema,
   type TableCreateInput,
   type TableDeactivateInput,
   type TableReactivateInput,
   type TableUpdateInput,
+  type GenerateTableTokenInput,
 } from "@/lib/validators/table.validator";
 
 const NOW_ISO = "2026-10-01T10:00:00.000Z";
@@ -528,5 +530,30 @@ describe("table validator - exported types", () => {
     expectTypeOf<TableDeactivateInput["expectedUpdatedAt"]>().toEqualTypeOf<string>();
     expectTypeOf<TableReactivateInput["tableId"]>().toEqualTypeOf<string>();
     expectTypeOf<TableReactivateInput["expectedUpdatedAt"]>().toEqualTypeOf<string>();
+    expectTypeOf<GenerateTableTokenInput["outletId"]>().toEqualTypeOf<string>();
+    expectTypeOf<GenerateTableTokenInput["tableId"]>().toEqualTypeOf<string>();
+  });
+});
+
+describe("generateTableTokenSchema validator", () => {
+  it("parses valid token generation payload", () => {
+    const data = parseOrThrow(generateTableTokenSchema, { outletId: "outlet-1", tableId: "table-1" });
+    expect(data).toEqual({ outletId: "outlet-1", tableId: "table-1" });
+  });
+
+  it("trims outletId and tableId", () => {
+    const data = parseOrThrow(generateTableTokenSchema, { outletId: "  outlet-1  ", tableId: "  table-1  " });
+    expect(data).toEqual({ outletId: "outlet-1", tableId: "table-1" });
+  });
+
+  it("rejects missing or empty identifiers", () => {
+    expectRejected(generateTableTokenSchema, { outletId: "", tableId: "table-1" });
+    expectRejected(generateTableTokenSchema, { outletId: "outlet-1", tableId: "" });
+    expectRejected(generateTableTokenSchema, { outletId: "   ", tableId: "table-1" });
+  });
+
+  it("rejects foreign fields", () => {
+    expectRejected(generateTableTokenSchema, { outletId: "outlet-1", tableId: "table-1", expectedUpdatedAt: NOW_ISO });
+    expectRejected(generateTableTokenSchema, { outletId: "outlet-1", tableId: "table-1", code: "T01" });
   });
 });

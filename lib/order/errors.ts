@@ -22,7 +22,8 @@ export type OrderErrorCode =
   | "MENU_NAME_CONFLICT"
   | "CATEGORY_NOT_AVAILABLE"
   | "CATALOG_VERSION_CONFLICT"
-  | "CATALOG_STATE_CONFLICT";
+  | "CATALOG_STATE_CONFLICT"
+  | "TOKEN_INVALID";
 
 const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   UNAUTHENTICATED: "Sesi Anda tidak valid. Silakan masuk kembali.",
@@ -50,6 +51,7 @@ const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   CATALOG_VERSION_CONFLICT:
     "Data katalog telah diperbarui oleh pengguna lain. Muat ulang data terbaru.",
   CATALOG_STATE_CONFLICT: "Status katalog tidak sesuai untuk operasi ini. Muat ulang data terbaru.",
+  TOKEN_INVALID: "Token QR meja tidak valid atau kedaluwarsa.",
 };
 
 export function getOrderErrorMessage(code: OrderErrorCode): string {

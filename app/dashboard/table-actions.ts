@@ -4,11 +4,13 @@ import { type OrderErrorCode, getOrderErrorMessage, toOrderError } from "@/lib/o
 import {
   createDiningTable,
   deactivateDiningTable,
+  generateQrToken,
   reactivateDiningTable,
   updateDiningTable,
   type DiningTableSummary,
 } from "@/lib/services/dining-table.service";
 import {
+  generateTableTokenSchema,
   tableCreateSchema,
   tableDeactivateSchema,
   tableReactivateSchema,
@@ -26,7 +28,13 @@ export type TableActionSuccess = {
   data: DiningTableSummary;
 };
 
+export type TableTokenSuccess = {
+  ok: true;
+  data: { token: string };
+};
+
 export type TableActionResult = TableActionSuccess | TableActionFailure;
+export type TableTokenResult = TableTokenSuccess | TableActionFailure;
 
 function failure(code: OrderErrorCode): TableActionFailure {
   return { ok: false, code, message: getOrderErrorMessage(code) };
@@ -90,6 +98,21 @@ export async function reactivateTableAction(payload: unknown): Promise<TableActi
     const summary = await reactivateDiningTable(parsed.data);
 
     return { ok: true, data: summary };
+  } catch (error) {
+    const mapped = toOrderError(error);
+    return failure(mapped.code);
+  }
+}
+
+export async function generateTableTokenAction(payload: unknown): Promise<TableTokenResult> {
+  const parsed = generateTableTokenSchema.safeParse(payload);
+  if (!parsed.success) {
+    return failure("INVALID_INPUT");
+  }
+
+  try {
+    const token = await generateQrToken(parsed.data);
+    return { ok: true, data: { token } };
   } catch (error) {
     const mapped = toOrderError(error);
     return failure(mapped.code);

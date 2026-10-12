@@ -186,6 +186,30 @@ describe("DiningTableTable", () => {
     expect(screen.getByRole("heading", { name: "Edit Meja" })).toBeInTheDocument();
   });
 
+  it("shows 'QR' button per row and opens QR dialog when canManageTables is true", async () => {
+    mockedUseDiningTablesQuery.mockReturnValue({
+      data: [
+        { id: "t-1", code: "M01", capacity: 4, isActive: true, updatedAt: "2026-01-01T00:00:00.000Z" },
+      ],
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderWithProvider(
+      <DiningTableTable authScope={authScope} outletId={outletId} canManageTables={true} />
+    );
+
+    const qrButton = screen.getByRole("button", { name: /^QR$/i });
+    expect(qrButton).toBeInTheDocument();
+
+    await userEvent.click(qrButton);
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: /QR Code Meja: M01/i })).toBeInTheDocument();
+  });
+
   it("hides 'Edit' button when canManageTables is false", () => {
     mockedUseDiningTablesQuery.mockReturnValue({
       data: [

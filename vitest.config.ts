@@ -47,6 +47,11 @@ export default defineConfig({
             "tests/unit/DashboardNavigation.test.tsx",
             "tests/unit/MenuCreateDialog.test.tsx",
             "tests/unit/MenuEditDialog.test.tsx",
+            "tests/unit/TableCreateDialog.test.tsx",
+            "tests/unit/TableEditDialog.test.tsx",
+            "tests/unit/DiningTableTable.test.tsx",
+            "tests/unit/TableQrDialog.test.tsx",
+            "tests/unit/public-menu-page.test.tsx",
           ],
           setupFiles: ["tests/setup-dom.ts"],
           testTimeout: 40000,
@@ -57,7 +62,7 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: ["tests/**/*.test.ts"],
+          include: ["tests/**/*.test.ts", "tests/unit/dining-table-page.test.tsx"],
           exclude: [
             "tests/unit/ui-primitives.test.tsx",
             "tests/unit/useCategoriesQuery.test.tsx",

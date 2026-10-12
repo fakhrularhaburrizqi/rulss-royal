@@ -7,14 +7,17 @@ import * as tableActions from "@/app/dashboard/table-actions";
 import {
   createTableAction,
   deactivateTableAction,
+  generateTableTokenAction,
   reactivateTableAction,
   updateTableAction,
   type TableActionResult,
+  type TableTokenResult,
 } from "@/app/dashboard/table-actions";
 import { OrderDomainError, getOrderErrorMessage, type OrderErrorCode } from "@/lib/order/errors";
 import {
   createDiningTable,
   deactivateDiningTable,
+  generateQrToken,
   reactivateDiningTable,
   updateDiningTable,
   type DiningTableSummary,
@@ -25,12 +28,14 @@ vi.mock("@/lib/services/dining-table.service", () => ({
   updateDiningTable: vi.fn(),
   deactivateDiningTable: vi.fn(),
   reactivateDiningTable: vi.fn(),
+  generateQrToken: vi.fn(),
 }));
 
 const mockedCreate = vi.mocked(createDiningTable);
 const mockedUpdate = vi.mocked(updateDiningTable);
 const mockedDeactivate = vi.mocked(deactivateDiningTable);
 const mockedReactivate = vi.mocked(reactivateDiningTable);
+const mockedGenerateQrToken = vi.mocked(generateQrToken);
 
 const UPDATED_AT = "2026-10-01T10:00:00.000Z";
 const MUTATED_AT = "2026-10-01T10:00:01.000Z";
@@ -146,6 +151,7 @@ describe("table actions (shared)", () => {
     expect(Object.keys(tableActions).sort()).toEqual([
       "createTableAction",
       "deactivateTableAction",
+      "generateTableTokenAction",
       "reactivateTableAction",
       "updateTableAction",
     ]);
@@ -155,7 +161,7 @@ describe("table actions (shared)", () => {
       expect(action.call.constructor.name).toBe("AsyncFunction");
     }
 
-    expect(source.match(/export async function \w+/g) ?? []).toHaveLength(4);
+    expect(source.match(/export async function \w+/g) ?? []).toHaveLength(5);
     expect(source).not.toContain("listTablesForManagement");
   });
 
@@ -698,6 +704,38 @@ describe("reactivateTableAction", () => {
         "isActive",
         "updatedAt",
       ]);
+    }
+  });
+});
+
+describe("generateTableTokenAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGenerateQrToken.mockResolvedValue("secret-token-123");
+  });
+
+  it("returns INVALID_INPUT when payload is invalid", async () => {
+    const result = await generateTableTokenAction({ outletId: "" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("INVALID_INPUT");
+    }
+  });
+
+  it("returns token on success", async () => {
+    const result = await generateTableTokenAction({ outletId: "outlet-1", tableId: "table-1" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toEqual({ token: "secret-token-123" });
+    }
+  });
+
+  it("handles service domain errors", async () => {
+    mockedGenerateQrToken.mockRejectedValueOnce(new OrderDomainError("TABLE_NOT_FOUND"));
+    const result = await generateTableTokenAction({ outletId: "outlet-1", tableId: "table-99" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("TABLE_NOT_FOUND");
     }
   });
 });

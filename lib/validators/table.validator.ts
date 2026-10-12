@@ -61,7 +61,15 @@ export const tableDeactivateSchema = z.object(tableTargetShape).strict();
 
 export const tableReactivateSchema = z.object(tableTargetShape).strict();
 
+export const generateTableTokenSchema = z
+  .object({
+    outletId: idSchema,
+    tableId: idSchema,
+  })
+  .strict();
+
 export type TableCreateInput = z.infer<typeof tableCreateSchema>;
 export type TableUpdateInput = z.infer<typeof tableUpdateSchema>;
 export type TableDeactivateInput = z.infer<typeof tableDeactivateSchema>;
 export type TableReactivateInput = z.infer<typeof tableReactivateSchema>;
+export type GenerateTableTokenInput = z.infer<typeof generateTableTokenSchema>;

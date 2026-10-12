@@ -10,6 +10,7 @@ import { OrderDomainError, getOrderErrorMessage } from "@/lib/order/errors";
 import {
   createDiningTable,
   deactivateDiningTable,
+  generateQrToken,
   listTablesForManagement,
   reactivateDiningTable,
   updateDiningTable,
@@ -554,7 +555,6 @@ describe("listTablesForManagement - read-only surface", () => {
 
     expect(source.split(/\r?\n/, 1)[0].replace(/;/, "")).toBe('import "server-only"');
     expect(source).not.toMatch(/\.(delete|deleteMany)\s*\(/);
-    expect(source).not.toContain("qrTokenHash");
     expect(source).not.toContain("customerOrder");
     expect(source).not.toContain("include:");
     expect(source).not.toContain("deletedAt");
@@ -1965,5 +1965,41 @@ describe("reactivateDiningTable - errors and transaction", () => {
     expect(tx.diningTable.findFirst).toHaveBeenCalledTimes(2);
     expect(tx.diningTable.updateMany).toHaveBeenCalledTimes(1);
     expect(tx.activityLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("generateQrToken", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedRequireOrderContext.mockResolvedValue({
+      actor: { tenantId: "tenant-ctx", userId: "user-1" },
+      outletId: "outlet-ctx",
+    });
+    tx.diningTable.findFirst.mockResolvedValue({
+      id: "table-1",
+      code: "T01",
+      capacity: 4,
+      isActive: true,
+      updatedAt: new Date(2026, 0, 1),
+    });
+    tx.diningTable.updateMany.mockResolvedValue({ count: 1 });
+    tx.activityLog.create.mockResolvedValue({ id: "log-1" });
+  });
+
+  it("rejects invalid input schema", async () => {
+    await expectDomainError(generateQrToken({ outletId: "" }), "INVALID_INPUT");
+  });
+
+  it("throws TABLE_NOT_FOUND when table does not exist", async () => {
+    tx.diningTable.findFirst.mockResolvedValueOnce(null);
+    await expectDomainError(generateQrToken({ outletId: "outlet-1", tableId: "table-x" }), "TABLE_NOT_FOUND");
+  });
+
+  it("generates a raw token string and updates qrTokenHash", async () => {
+    const token = await generateQrToken({ outletId: "outlet-1", tableId: "table-1" });
+    expect(typeof token).toBe("string");
+    expect(token.length).toBeGreaterThan(0);
+    expect(tx.diningTable.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.activityLog.create).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,6 +8,7 @@ import type { DiningTableAuthScope } from "@/lib/dashboard/dining-table-query-ke
 import type { DiningTableSummary } from "@/lib/services/dining-table.service";
 import { TableCreateDialog } from "./TableCreateDialog";
 import { TableEditDialog } from "./TableEditDialog";
+import { TableQrDialog } from "./TableQrDialog";
 
 interface DiningTableTableProps {
   authScope: DiningTableAuthScope;
@@ -35,9 +36,11 @@ export function DiningTableTable({
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<DiningTableSummary | null>(null);
+  const [qrTable, setQrTable] = useState<DiningTableSummary | null>(null);
 
   const createTriggerRef = useRef<HTMLButtonElement>(null);
   const editTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const qrTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   return (
     <div className="space-y-4">
@@ -107,16 +110,28 @@ export function DiningTableTable({
                   </TableCell>
                   <TableCell className="text-right">
                     {canManageTables && (
-                      <Button
-                        ref={(el) => {
-                          editTriggerRefs.current[table.id] = el;
-                        }}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingTable(table)}
-                      >
-                        Edit
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          ref={(el) => {
+                            qrTriggerRefs.current[table.id] = el;
+                          }}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQrTable(table)}
+                        >
+                          QR
+                        </Button>
+                        <Button
+                          ref={(el) => {
+                            editTriggerRefs.current[table.id] = el;
+                          }}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingTable(table)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -140,6 +155,16 @@ export function DiningTableTable({
           outletId={outletId}
           table={editingTable}
           triggerRef={{ current: editTriggerRefs.current[editingTable.id] ?? null }}
+        />
+      )}
+
+      {qrTable && (
+        <TableQrDialog
+          isOpen={true}
+          onClose={() => setQrTable(null)}
+          outletId={outletId}
+          table={qrTable}
+          triggerRef={{ current: qrTriggerRefs.current[qrTable.id] ?? null }}
         />
       )}
     </div>

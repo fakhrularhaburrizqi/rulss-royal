@@ -1,11 +1,14 @@
 import "server-only";
 
+import crypto from "node:crypto";
+import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { requireOrderContext } from "@/lib/order/context";
 import { OrderDomainError, isTableCodeUniqueViolation, toOrderError } from "@/lib/order/errors";
 import {
+  generateTableTokenSchema,
   tableCreateSchema,
   tableDeactivateSchema,
   tableReactivateSchema,
@@ -26,6 +29,7 @@ const TABLE_CREATED_ACTION = "table.created";
 const TABLE_UPDATED_ACTION = "table.updated";
 const TABLE_DEACTIVATED_ACTION = "table.deactivated";
 const TABLE_REACTIVATED_ACTION = "table.reactivated";
+const TABLE_TOKEN_GENERATED_ACTION = "table.token_generated";
 const TABLE_ENTITY = "DiningTable";
 
 const DEFAULT_TABLE_CAPACITY = 4;
@@ -424,6 +428,86 @@ export async function reactivateDiningTable(input: unknown): Promise<DiningTable
         isActive: afterSnapshot.isActive,
         updatedAt: afterSnapshot.updatedAt,
       };
+    }, TRANSACTION_OPTIONS);
+  } catch (error) {
+    rethrowTableError(error);
+  }
+}
+
+export async function generateQrToken(input: unknown): Promise<string> {
+  const parsed = generateTableTokenSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new OrderDomainError("INVALID_INPUT");
+  }
+
+  const { outletId, tableId } = parsed.data;
+
+  const context = await requireOrderContext(outletId, "tables.manage");
+  const tenantId = context.actor.tenantId;
+  const authorizedOutletId = context.outletId;
+
+  try {
+    return await db.$transaction(async (tx) => {
+      const current = await tx.diningTable.findFirst({
+        where: {
+          id: tableId,
+          outletId: authorizedOutletId,
+        },
+        select: MANAGEMENT_TABLE_SELECT,
+      });
+
+      if (current === null) {
+        throw new OrderDomainError("TABLE_NOT_FOUND");
+      }
+
+      const rawToken = crypto.randomBytes(16).toString("hex");
+      const tokenHash = await bcrypt.hash(rawToken, 12);
+      const mutationTime = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
+
+      const updated = await tx.diningTable.updateMany({
+        where: {
+          id: current.id,
+          outletId: authorizedOutletId,
+          updatedAt: current.updatedAt,
+        },
+        data: {
+          qrTokenHash: tokenHash,
+          updatedAt: mutationTime,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new OrderDomainError("TABLE_VERSION_CONFLICT");
+      }
+
+      const beforeSnapshot = {
+        code: current.code,
+        capacity: current.capacity,
+        isActive: current.isActive,
+        updatedAt: current.updatedAt.toISOString(),
+      };
+
+      const afterSnapshot = {
+        code: current.code,
+        capacity: current.capacity,
+        isActive: current.isActive,
+        updatedAt: mutationTime.toISOString(),
+      };
+
+      await tx.activityLog.create({
+        data: {
+          tenantId,
+          outletId: authorizedOutletId,
+          userId: context.actor.userId,
+          action: TABLE_TOKEN_GENERATED_ACTION,
+          entity: TABLE_ENTITY,
+          entityId: current.id,
+          before: beforeSnapshot,
+          after: afterSnapshot,
+        },
+      });
+
+      return rawToken;
     }, TRANSACTION_OPTIONS);
   } catch (error) {
     rethrowTableError(error);
