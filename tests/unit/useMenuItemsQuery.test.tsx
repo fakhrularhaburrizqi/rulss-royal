@@ -11,6 +11,21 @@ vi.mock("@/lib/api/menu-items", () => ({
   fetchMenuItems: vi.fn(),
 }));
 
+vi.mock("@/lib/api/categories", () => ({
+  fetchCategories: vi.fn().mockResolvedValue({
+    data: [{ id: "cat-1", name: "Makanan", sortOrder: 0, isActive: true, deletedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" }],
+    nextCursor: null,
+    hasMore: false,
+  }),
+}));
+
+const mockCreateMenuItemAction = vi.hoisted(() => vi.fn());
+const mockUpdateMenuItemAction = vi.hoisted(() => vi.fn());
+vi.mock("@/app/dashboard/menu-actions", () => ({
+  createMenuItemAction: mockCreateMenuItemAction,
+  updateMenuItemAction: mockUpdateMenuItemAction,
+}));
+
 const mockedFetchMenuItems = vi.mocked(fetchMenuItems);
 
 const authScope: MenuItemAuthScope = { tenantId: "tenant-1", userId: "user-1" };
