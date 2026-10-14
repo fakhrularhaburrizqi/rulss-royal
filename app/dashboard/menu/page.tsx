@@ -68,6 +68,7 @@ export default async function MenuPage({
         outletId={resolution.outlet.id}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
+        canManageCatalog={resolution.capabilities.canManageCatalog}
       />
     </DashboardShell>
   );

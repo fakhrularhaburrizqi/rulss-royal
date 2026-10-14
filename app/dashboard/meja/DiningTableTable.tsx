@@ -95,8 +95,8 @@ export function DiningTableTable({
             ) : (
               tables.map((table) => (
                 <TableRow key={table.id}>
-                  <TableCell className="font-medium">{table.code}</TableCell>
-                  <TableCell>{table.capacity} orang</TableCell>
+                  <TableCell className="font-medium text-emerald-950">{table.code}</TableCell>
+                  <TableCell className="text-emerald-900">{table.capacity} orang</TableCell>
                   <TableCell>
                     {table.isActive ? (
                       <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">

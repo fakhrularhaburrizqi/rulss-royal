@@ -12,6 +12,7 @@ interface MenuListPageProps {
   outletId: string;
   initialData?: PaginatedMenuItemsResult;
   initialDataUpdatedAt?: number;
+  canManageCatalog?: boolean;
 }
 
 function MenuQueryScope({
@@ -19,6 +20,7 @@ function MenuQueryScope({
   outletId,
   initialData,
   initialDataUpdatedAt,
+  canManageCatalog,
 }: MenuListPageProps) {
   const [queryClient] = useState(
     () =>
@@ -41,6 +43,7 @@ function MenuQueryScope({
         outletId={outletId}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
+        canManageCatalog={canManageCatalog}
       />
     </QueryClientProvider>
   );
@@ -51,6 +54,7 @@ export function MenuListPage({
   outletId,
   initialData,
   initialDataUpdatedAt,
+  canManageCatalog = false,
 }: MenuListPageProps) {
   const scopeKey = JSON.stringify([authScope.tenantId, authScope.userId, outletId]);
 
@@ -61,6 +65,7 @@ export function MenuListPage({
       outletId={outletId}
       initialData={initialData}
       initialDataUpdatedAt={initialDataUpdatedAt}
+      canManageCatalog={canManageCatalog}
     />
   );
 }
