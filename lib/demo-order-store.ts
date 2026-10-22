@@ -28,7 +28,7 @@ export type DemoOrderInput = {
   note: string | null;
 };
 
-export const DEMO_ORDER_STORAGE_KEY = "warungku-demo-orders-v1";
+export const DEMO_ORDER_STORAGE_KEY = "rulss-royal-demo-orders-v1";
 
 export const INITIAL_DEMO_ORDERS: readonly DemoOrder[] = [
   {
@@ -48,7 +48,7 @@ export const INITIAL_DEMO_ORDERS: readonly DemoOrder[] = [
     tableNumber: "07",
     customerName: null,
     items: [
-      { name: "Mie Ayam Warungku", quantity: 1 },
+      { name: "Mie Ayam Rulss Royal", quantity: 1 },
       { name: "Pisang Goreng Crispy", quantity: 1 },
     ],
     total: 25000,

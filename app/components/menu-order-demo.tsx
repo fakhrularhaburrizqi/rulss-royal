@@ -23,7 +23,7 @@ type MenuItem = {
   imageAlt: string;
 };
 
-const MENU_WARUNGKU: MenuItem[] = [
+const MENU_RULSS_ROYAL: MenuItem[] = [
   {
     id: "nasi-goreng",
     nama: "Nasi Goreng Spesial",
@@ -35,7 +35,7 @@ const MENU_WARUNGKU: MenuItem[] = [
   },
   {
     id: "mie-ayam",
-    nama: "Mie Ayam Warungku",
+    nama: "Mie Ayam Rulss Royal",
     keterangan: "Mie ayam kuah gurih dengan bawang goreng.",
     harga: 15000,
     kategori: "Makanan",
@@ -168,13 +168,13 @@ export function MenuOrderDemo() {
 
   const menuTampil = useMemo(
     () =>
-      filter === "Semua" ? MENU_WARUNGKU : MENU_WARUNGKU.filter((item) => item.kategori === filter),
+      filter === "Semua" ? MENU_RULSS_ROYAL : MENU_RULSS_ROYAL.filter((item) => item.kategori === filter),
     [filter]
   );
 
   const barisKeranjang = useMemo(
     () =>
-      MENU_WARUNGKU.filter((item) => (keranjang[item.id] ?? 0) > 0).map((item) => {
+      MENU_RULSS_ROYAL.filter((item) => (keranjang[item.id] ?? 0) > 0).map((item) => {
         const quantity = keranjang[item.id] ?? 0;
         return { item, quantity, subtotal: item.harga * quantity };
       }),
@@ -269,7 +269,7 @@ export function MenuOrderDemo() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 id="judul-menu" className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Menu Warungku
+              Menu Rulss Royal
             </h2>
             <p className="mt-2 max-w-xl text-base leading-relaxed text-emerald-900/80">
               Enam menu contoh untuk demo ini, harganya dalam rupiah.
@@ -310,7 +310,7 @@ export function MenuOrderDemo() {
             </div>
 
             <p className="mt-3 text-sm text-emerald-900/80">
-              Menampilkan {menuTampil.length} dari {MENU_WARUNGKU.length} menu
+              Menampilkan {menuTampil.length} dari {MENU_RULSS_ROYAL.length} menu
             </p>
 
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

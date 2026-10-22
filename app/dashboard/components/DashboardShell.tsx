@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import Image from "next/image";
 import { DashboardNavigation } from "./DashboardNavigation";
 import { OutletSelector } from "./OutletSelector";
 import { logoutAction } from "../actions";
@@ -27,8 +28,15 @@ export function DashboardShell({
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-40 border-b border-emerald-900/10 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-emerald-950">Warungku</h1>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Rulss Royal Logo"
+              width={36}
+              height={36}
+              className="rounded-full object-cover shadow-sm border border-emerald-900/20"
+            />
+            <h1 className="text-lg font-semibold text-emerald-950">Rulss Royal</h1>
             <span className="hidden sm:inline-flex items-center rounded-lg border border-emerald-900/10 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-900">
               {tenantName} ({tenantCode})
             </span>

@@ -90,8 +90,8 @@ export function buildReceiptHtml(order: ReceiptOrder): string {
         </head>
         <body>
           <div class="header">
-            <h1>Warungku</h1>
-            <p>Sistem Manajemen Warung & Resto</p>
+            <h1>Rulss Royal</h1>
+            <p>Sistem Manajemen Resto & Cafe</p>
           </div>
           <div class="info">
             <table>

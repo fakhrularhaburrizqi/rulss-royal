@@ -1,8 +1,8 @@
-# Warungku
+# Rulss Royal
 
 **Aplikasi pemesanan menu melalui QR meja dan dashboard pengelola untuk UMKM kuliner.**
 
-Warungku memungkinkan pelanggan memindai QR meja, melihat menu, memilih item, dan mengirim pesanan tanpa membuat akun. Pengelola mengatur katalog dan meja, menerima pesanan, serta memperbarui status melalui dashboard dengan autentikasi dan pembatasan akses tenant/outlet.
+Rulss Royal memungkinkan pelanggan memindai QR meja, melihat menu, memilih item, dan mengirim pesanan tanpa membuat akun. Pengelola mengatur katalog dan meja, menerima pesanan, serta memperbarui status melalui dashboard dengan autentikasi dan pembatasan akses tenant/outlet.
 
 Rilis awal ditujukan untuk demonstrasi UAS dan deployment terbatas menggunakan data uji. **Alur QR sampai pesanan diterima pengelola adalah fitur inti rilis awal**, bukan hanya roadmap. Modul finansial dan operasional yang lebih kompleks dilanjutkan setelah alur utama tersebut berjalan.
 
@@ -262,7 +262,7 @@ Bootstrap tenant/outlet/admin mengikuti script actual repository. Periksa parame
 Contoh placeholder minimum, bukan kredensial siap pakai:
 
 ```dotenv
-DATABASE_URL=postgresql://APP_USER:APP_PASSWORD@DB_HOST:5432/warungku
+DATABASE_URL=postgresql://APP_USER:APP_PASSWORD@DB_HOST:5432/rulss_royal
 AUTH_SECRET=REPLACE_WITH_A_STRONG_RANDOM_SECRET
 ```
 

@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Warungku — Pesan Mudah, Nikmati Lebih Cepat",
+  title: "Rulss Royal — Pesan Mudah, Nikmati Lebih Cepat",
   description: "Platform pemesanan digital untuk warung, kafe, dan UMKM kuliner.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -270,7 +270,7 @@ export function OperationalDemo() {
 
           <p className="mt-5 text-sm font-bold text-emerald-700">Demo Operasional</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-emerald-950 sm:text-4xl">
-            Operasional Warungku
+            Operasional Rulss Royal
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-emerald-900/80 sm:text-base">
             Semua pesanan di halaman ini adalah data contoh untuk melihat alur kasir dan dapur.

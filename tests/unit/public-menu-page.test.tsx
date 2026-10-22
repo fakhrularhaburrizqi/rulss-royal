@@ -71,7 +71,7 @@ describe("PublicMenuPage", () => {
 
     render(ui);
 
-    expect(screen.getByText("Menu Warungku")).toBeInTheDocument();
+    expect(screen.getByText("Menu Rulss Royal")).toBeInTheDocument();
     expect(screen.getByText("Meja: M01")).toBeInTheDocument();
   });
 

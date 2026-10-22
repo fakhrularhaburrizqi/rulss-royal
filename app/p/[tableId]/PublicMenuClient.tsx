@@ -120,10 +120,21 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
     <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen pb-28 shadow-md relative">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-emerald-700 dark:bg-emerald-800 text-white p-4 shadow-sm flex items-center justify-between">
-        <h1 className="text-lg font-bold">Menu Warungku</h1>
-        <span className="rounded-full bg-emerald-800 dark:bg-emerald-900 px-3 py-1 text-xs font-semibold">
-          Meja: {table.code}
-        </span>
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Image
+              src="/logo.png"
+              alt="Rulss Royal Logo"
+              width={64}
+              height={64}
+              className="rounded-full object-cover shadow-lg border-2 border-emerald-500/50 dark:border-emerald-400/50"
+            />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Menu Rulss Royal</h1>
+          </div>
+          <span className="rounded-full bg-emerald-800 dark:bg-emerald-900 px-3 py-1 text-xs font-semibold">
+            Meja: {table.code}
+          </span>
+        </div>
       </header>
 
       {/* Content */}

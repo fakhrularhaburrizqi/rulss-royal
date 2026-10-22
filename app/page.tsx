@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { MenuOrderDemo } from "./components/menu-order-demo";
 
@@ -103,13 +104,14 @@ export default function Home() {
             href="/"
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-1 ${fokus}`}
           >
-            <span
-              aria-hidden="true"
-              className="grid size-9 place-items-center rounded-xl bg-emerald-700 text-lg font-bold text-white"
-            >
-              W
-            </span>
-            <span className="text-lg font-bold tracking-tight text-emerald-950">Warungku</span>
+            <Image
+              src="/logo.png"
+              alt="Rulss Royal Logo"
+              width={36}
+              height={36}
+              className="rounded-full object-cover shadow-sm border border-emerald-950/20"
+            />
+            <span className="text-lg font-bold tracking-tight text-emerald-950">Rulss Royal</span>
           </Link>
 
           <a href="/login" className={`ml-auto sm:hidden ${tombolPrimer}`}>
@@ -159,7 +161,7 @@ export default function Home() {
                 Pesan dari Meja, Nikmati Tanpa Antre
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-emerald-900/80 sm:text-lg">
-                Warungku mencatat pesanan lewat QR di meja. Tamu pilih menu dari HP, pesanan
+                Rulss Royal mencatat pesanan lewat QR di meja. Tamu pilih menu dari HP, pesanan
                 langsung masuk ke dapur, dan makanan diantar ke meja.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -177,7 +179,7 @@ export default function Home() {
                 Contoh struk pesanan
               </figcaption>
               <div className="mt-3 flex items-center justify-between border-b border-dashed border-emerald-900/20 pb-3">
-                <span className="font-bold text-emerald-950">Warungku</span>
+                 <span className="font-bold text-emerald-950">Rulss Royal</span>
                 <span className="rounded-lg bg-amber-100 px-2 py-1 text-sm font-semibold text-amber-800">
                   Meja 4
                 </span>
@@ -210,7 +212,7 @@ export default function Home() {
         >
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
             <h2 id="judul-keunggulan" className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Keunggulan Warungku
+              Keunggulan Rulss Royal
             </h2>
             <p className="mt-2 max-w-2xl text-base leading-relaxed text-white/80">
               Tiga hal yang membuat pemesanan di warung terasa lebih ringan.
@@ -313,7 +315,7 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-emerald-950 text-white/70">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <p className="text-lg font-bold text-white">Warungku</p>
+            <p className="text-lg font-bold text-white">Rulss Royal</p>
             <p className="mt-1 text-sm">Demo UI untuk warung, kafe, dan UMKM kuliner.</p>
           </div>
           <nav
@@ -336,7 +338,7 @@ export default function Home() {
         </div>
         <div className="border-t border-white/10">
           <p className="mx-auto max-w-6xl px-4 py-5 text-sm sm:px-6">
-            © 2026 Warungku. <span className="font-semibold text-amber-300">Demo UI</span>
+            © 2026 Rulss Royal. <span className="font-semibold text-amber-300">Demo UI</span>
           </p>
         </div>
       </footer>
