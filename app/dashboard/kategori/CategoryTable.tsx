@@ -632,41 +632,35 @@ export function CategoryTable({
                           {canManageCatalog && !isAuthError && (
                             <div className="flex flex-wrap items-center gap-1">
                               <Button
-                                variant="ghost"
-                                size="sm"
                                 onClick={(event) => handleOpenEditDialog(row, event.currentTarget)}
                                 disabled={isSubmitting && dialogMode !== "closed"}
                                 aria-disabled={isSubmitting}
                                 aria-label={`Edit ${row.name}`}
-                                className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Edit
                               </Button>
                               {row.deletedAt === null ? (
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
                                   onClick={(event) =>
                                     handleOpenArchiveDialog(row, "archive", event.currentTarget)
                                   }
                                   disabled={isSubmitting && dialogMode !== "closed"}
                                   aria-disabled={isSubmitting}
                                   aria-label={`Arsip ${row.name}`}
-                                  className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Arsip
                                 </Button>
                               ) : (
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
                                   onClick={(event) =>
                                     handleOpenArchiveDialog(row, "restore", event.currentTarget)
                                   }
                                   disabled={isSubmitting && dialogMode !== "closed"}
                                   aria-disabled={isSubmitting}
                                   aria-label={`Pulihkan ${row.name}`}
-                                  className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 aria-disabled:cursor-wait"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Pulihkan
                                 </Button>

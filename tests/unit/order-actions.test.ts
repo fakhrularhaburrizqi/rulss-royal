@@ -4,13 +4,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createOrderAction, updateOrderStatusAction } from "@/app/dashboard/order-actions";
 import { OrderDomainError, getOrderErrorMessage } from "@/lib/order/errors";
 import { createCustomerOrder } from "@/lib/services/order-create.service";
+import { completeOrderDirect } from "@/lib/services/order-complete.service";
+import { getOrderForReceipt } from "@/lib/services/order-receipt.service";
 import { updateOrderStatus } from "@/lib/services/order-status.service";
 
+vi.mock("@/lib/db", () => ({
+  db: {},
+}));
 vi.mock("@/lib/services/order-create.service", () => ({
   createCustomerOrder: vi.fn(),
 }));
 vi.mock("@/lib/services/order-status.service", () => ({
   updateOrderStatus: vi.fn(),
+}));
+vi.mock("@/lib/services/order-complete.service", () => ({
+  completeOrderDirect: vi.fn(),
+}));
+vi.mock("@/lib/services/order-receipt.service", () => ({
+  getOrderForReceipt: vi.fn(),
 }));
 
 const mockedCreateCustomerOrder = vi.mocked(createCustomerOrder);

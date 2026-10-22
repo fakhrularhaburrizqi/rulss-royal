@@ -152,6 +152,7 @@ describe("table actions (shared)", () => {
       "createTableAction",
       "deactivateTableAction",
       "generateTableTokenAction",
+      "getTableQrAction",
       "reactivateTableAction",
       "updateTableAction",
     ]);
@@ -161,7 +162,7 @@ describe("table actions (shared)", () => {
       expect(action.call.constructor.name).toBe("AsyncFunction");
     }
 
-    expect(source.match(/export async function \w+/g) ?? []).toHaveLength(5);
+    expect(source.match(/export async function \w+/g) ?? []).toHaveLength(6);
     expect(source).not.toContain("listTablesForManagement");
   });
 

@@ -30,12 +30,14 @@ const menuItemNameSchema = z
   .max(MAX_MENU_NAME, `Nama menu maksimal ${MAX_MENU_NAME} karakter`);
 
 const sortOrderSchema = z
+  .coerce
   .number()
   .int("Urutan harus bilangan bulat")
   .min(0, "Urutan minimal 0")
   .max(MAX_SORT_ORDER, `Urutan maksimal ${MAX_SORT_ORDER}`);
 
 const priceSchema = z
+  .coerce
   .number()
   .int("Harga harus bilangan bulat")
   .min(MIN_MONEY, "Harga tidak boleh negatif")
@@ -43,17 +45,31 @@ const priceSchema = z
 
 const descriptionSchema = z
   .string()
-  .trim()
-  .max(MAX_MENU_DESCRIPTION, `Deskripsi maksimal ${MAX_MENU_DESCRIPTION} karakter`)
-  .transform((value) => (value === "" ? null : value))
-  .optional();
+  .nullable()
+  .optional()
+  .transform((value) => {
+    if (value === null || value === undefined) return value;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  })
+  .refine(
+    (value) => value === null || value === undefined || value.length <= MAX_MENU_DESCRIPTION,
+    { message: `Deskripsi maksimal ${MAX_MENU_DESCRIPTION} karakter` }
+  );
 
 const imageAltSchema = z
   .string()
-  .trim()
-  .max(MAX_IMAGE_ALT, `Teks alt gambar maksimal ${MAX_IMAGE_ALT} karakter`)
-  .transform((value) => (value === "" ? null : value))
-  .optional();
+  .nullable()
+  .optional()
+  .transform((value) => {
+    if (value === null || value === undefined) return value;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  })
+  .refine(
+    (value) => value === null || value === undefined || value.length <= MAX_IMAGE_ALT,
+    { message: `Teks alt gambar maksimal ${MAX_IMAGE_ALT} karakter` }
+  );
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -65,9 +81,10 @@ function isHttpUrl(value: string): boolean {
 }
 
 const imageUrlSchema = z
-  .string()
-  .trim()
-  .max(MAX_IMAGE_URL, `URL gambar maksimal ${MAX_IMAGE_URL} karakter`)
+  .union([
+    z.literal(""),
+    z.string().trim().max(MAX_IMAGE_URL, `URL gambar maksimal ${MAX_IMAGE_URL} karakter`),
+  ])
   .transform((value) => (value === "" ? null : value))
   .refine((value) => value === null || isHttpUrl(value), {
     message: "URL gambar tidak valid",

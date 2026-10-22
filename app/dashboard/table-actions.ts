@@ -5,6 +5,7 @@ import {
   createDiningTable,
   deactivateDiningTable,
   generateQrToken,
+  getTableQrToken,
   reactivateDiningTable,
   updateDiningTable,
   type DiningTableSummary,
@@ -113,6 +114,21 @@ export async function generateTableTokenAction(payload: unknown): Promise<TableT
   try {
     const token = await generateQrToken(parsed.data);
     return { ok: true, data: { token } };
+  } catch (error) {
+    const mapped = toOrderError(error);
+    return failure(mapped.code);
+  }
+}
+
+export async function getTableQrAction(payload: unknown): Promise<TableTokenResult> {
+  const parsed = generateTableTokenSchema.safeParse(payload);
+  if (!parsed.success) {
+    return failure("INVALID_INPUT");
+  }
+
+  try {
+    const token = await getTableQrToken(parsed.data);
+    return { ok: true, data: { token: token ?? "" } };
   } catch (error) {
     const mapped = toOrderError(error);
     return failure(mapped.code);

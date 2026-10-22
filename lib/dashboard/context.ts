@@ -15,6 +15,7 @@ export type DashboardCapabilities = {
   canManageCatalog: boolean;
   canViewTables: boolean;
   canManageTables: boolean;
+  canViewOrders?: boolean;
 };
 
 export type DashboardContextResult =
@@ -99,6 +100,7 @@ async function computeCapabilities(tenantId: string, userId: string): Promise<Da
       canManageCatalog: perms.has("menu.manage"),
       canViewTables: perms.has("tables.view"),
       canManageTables: perms.has("tables.manage"),
+      canViewOrders: perms.has("orders.manage"),
     };
   } catch {
     throw toOrderErrorCode("INTERNAL_ERROR");

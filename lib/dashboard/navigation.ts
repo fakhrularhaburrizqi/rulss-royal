@@ -1,7 +1,7 @@
 export type NavItem = {
   href: string;
   label: string;
-  requiredPermission?: "canViewCatalog" | "canViewTables";
+  requiredPermission?: "canViewCatalog" | "canViewTables" | "canViewOrders";
   isAvailable?: boolean;
 };
 

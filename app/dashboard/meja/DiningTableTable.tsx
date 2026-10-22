@@ -115,9 +115,8 @@ export function DiningTableTable({
                           ref={(el) => {
                             qrTriggerRefs.current[table.id] = el;
                           }}
-                          variant="outline"
-                          size="sm"
                           onClick={() => setQrTable(table)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
                         >
                           QR
                         </Button>
@@ -125,9 +124,8 @@ export function DiningTableTable({
                           ref={(el) => {
                             editTriggerRefs.current[table.id] = el;
                           }}
-                          variant="outline"
-                          size="sm"
                           onClick={() => setEditingTable(table)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
                         >
                           Edit
                         </Button>

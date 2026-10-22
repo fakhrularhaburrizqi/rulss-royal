@@ -10,11 +10,15 @@ const mockCreateTableAction = vi.hoisted(() => vi.fn());
 const mockUpdateTableAction = vi.hoisted(() => vi.fn());
 const mockDeactivateTableAction = vi.hoisted(() => vi.fn());
 const mockReactivateTableAction = vi.hoisted(() => vi.fn());
+const mockGenerateTableTokenAction = vi.hoisted(() => vi.fn());
+const mockGetTableQrAction = vi.hoisted(() => vi.fn().mockResolvedValue({ ok: true, data: { token: "" } }));
 vi.mock("@/app/dashboard/table-actions", () => ({
   createTableAction: mockCreateTableAction,
   updateTableAction: mockUpdateTableAction,
   deactivateTableAction: mockDeactivateTableAction,
   reactivateTableAction: mockReactivateTableAction,
+  generateTableTokenAction: mockGenerateTableTokenAction,
+  getTableQrAction: mockGetTableQrAction,
 }));
 
 vi.mock("@/app/dashboard/meja/useDiningTablesQuery", () => ({

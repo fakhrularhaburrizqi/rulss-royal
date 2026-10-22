@@ -234,11 +234,9 @@ export function MenuItemTable({
                           {canManageCatalog && !isAuthError && (
                             <TableCell>
                               <Button
-                                variant="ghost"
-                                size="sm"
                                 onClick={() => handleOpenEdit(row)}
                                 aria-label={`Edit ${row.name}`}
-                                className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
                               >
                                 Edit
                               </Button>

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { generateTableTokenAction } from "@/app/dashboard/table-actions";
+import { generateTableTokenAction, getTableQrAction } from "@/app/dashboard/table-actions";
 import type { DiningTableSummary } from "@/lib/services/dining-table.service";
 
 interface TableQrDialogProps {
@@ -30,12 +30,25 @@ export function TableQrDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setToken(null);
-      setIsGenerating(false);
+      setIsGenerating(true);
       setError(null);
       setCopied(false);
+      getTableQrAction({ tableId: table.id, outletId })
+        .then((res) => {
+          if (res.ok && res.data.token) {
+            setToken(res.data.token);
+          } else {
+            setToken(null);
+          }
+        })
+        .catch(() => {
+          setToken(null);
+        })
+        .finally(() => {
+          setIsGenerating(false);
+        });
     }
-  }, [isOpen, table]);
+  }, [isOpen, table.id, outletId]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -127,10 +140,16 @@ export function TableQrDialog({
           ) : (
             <div className="space-y-4">
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-                <div className="flex h-40 w-40 items-center justify-center rounded bg-white shadow-sm border text-sm font-semibold text-gray-500">
-                  QR Code (Siap Dicetak)
+                <div className="bg-white p-3 rounded-lg shadow-sm border">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(publicUrl)}`}
+                    alt={`QR Code Meja ${table.code}`}
+                    width={160}
+                    height={160}
+                    className="mx-auto"
+                  />
                 </div>
-                <p className="mt-2 text-xs text-gray-500">Meja: {table.code}</p>
+                <p className="mt-2 text-xs font-semibold text-emerald-950">Meja: {table.code}</p>
               </div>
 
               <div className="space-y-2">
@@ -153,11 +172,30 @@ export function TableQrDialog({
                 </div>
               </div>
 
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(publicUrl, "_blank")}
+                  className="flex-1 text-xs"
+                >
+                  Buka Tautan
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.print()}
+                  className="flex-1 text-xs"
+                >
+                  Cetak / Print
+                </Button>
+              </div>
+
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
                   onClick={onClose}
-                  className="w-full"
+                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
                 >
                   Tutup
                 </Button>

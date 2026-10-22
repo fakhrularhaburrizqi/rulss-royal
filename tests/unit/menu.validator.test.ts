@@ -400,6 +400,12 @@ describe("menuItemCreateSchema", () => {
       menuItemCreatePayload({ description: "  Hangat  " })
     );
     expect(text.description).toBe("Hangat");
+
+    const nulled = parseOrThrow(
+      menuItemCreateSchema,
+      menuItemCreatePayload({ description: null })
+    );
+    expect(nulled.description).toBeNull();
   });
 
   it("enforces the description length boundary of 500", () => {
@@ -422,6 +428,9 @@ describe("menuItemCreateSchema", () => {
       parseOrThrow(menuItemCreateSchema, menuItemCreatePayload({ imageAlt: "a".repeat(120) }))
         .imageAlt
     ).toHaveLength(120);
+    expect(
+      parseOrThrow(menuItemCreateSchema, menuItemCreatePayload({ imageAlt: null })).imageAlt
+    ).toBeNull();
     expectRejected(menuItemCreateSchema, menuItemCreatePayload({ imageAlt: "a".repeat(121) }));
     expectRejected(menuItemCreateSchema, menuItemCreatePayload({ imageAlt: 42 }));
   });

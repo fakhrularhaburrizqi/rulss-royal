@@ -464,7 +464,7 @@ export async function generateQrToken(input: unknown): Promise<string> {
       const tokenHash = await bcrypt.hash(rawToken, 12);
       const mutationTime = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
 
-      const updated = await tx.diningTable.updateMany({
+      const updated = await (tx.diningTable as any).updateMany({
         where: {
           id: current.id,
           outletId: authorizedOutletId,
@@ -472,6 +472,7 @@ export async function generateQrToken(input: unknown): Promise<string> {
         },
         data: {
           qrTokenHash: tokenHash,
+          qrToken: rawToken,
           updatedAt: mutationTime,
         },
       });
@@ -511,5 +512,29 @@ export async function generateQrToken(input: unknown): Promise<string> {
     }, TRANSACTION_OPTIONS);
   } catch (error) {
     rethrowTableError(error);
+  }
+}
+
+export async function getTableQrToken(input: unknown): Promise<string | null> {
+  const parsed = generateTableTokenSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new OrderDomainError("INVALID_INPUT");
+  }
+
+  const { outletId, tableId } = parsed.data;
+  const context = await requireOrderContext(outletId, "tables.view");
+
+  try {
+    const table = await (db.diningTable as any).findFirst({
+      where: {
+        id: tableId,
+        outletId: context.outletId,
+      },
+      select: { qrToken: true },
+    });
+
+    return table?.qrToken ?? null;
+  } catch (error) {
+    throw toOrderError(error);
   }
 }

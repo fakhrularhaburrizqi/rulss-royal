@@ -1,6 +1,49 @@
 import { redirect } from "next/navigation";
 import { resolveDashboardContext } from "@/lib/dashboard/context";
 import { DashboardShell } from "./components/DashboardShell";
+import { db } from "@/lib/db";
+import { OrderStatus } from "@prisma/client";
+
+async function getDashboardMetrics(tenantId: string, outletId: string) {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const [completedToday, allToday, activeOrders] = await Promise.all([
+    db.customerOrder.findMany({
+      where: {
+        tenantId,
+        outletId,
+        status: OrderStatus.COMPLETED,
+        createdAt: { gte: startOfDay },
+      },
+      select: { total: true },
+    }),
+    db.customerOrder.count({
+      where: {
+        tenantId,
+        outletId,
+        createdAt: { gte: startOfDay },
+      },
+    }),
+    db.customerOrder.count({
+      where: {
+        tenantId,
+        outletId,
+        status: {
+          notIn: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+        },
+      },
+    }),
+  ]);
+
+  const revenueToday = completedToday.reduce((sum, order) => sum + order.total, 0);
+
+  return {
+    revenueToday,
+    ordersToday: allToday,
+    activeOrders,
+  };
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -26,6 +69,15 @@ export default async function DashboardPage({
     }
   })();
 
+  let metrics = { revenueToday: 0, ordersToday: 0, activeOrders: 0 };
+  if (resolution.kind === "selected") {
+    try {
+      metrics = await getDashboardMetrics(tenant.id, resolution.outlet.id);
+    } catch {
+      // ignore metrics error if db fails temporarily
+    }
+  }
+
   return (
     <DashboardShell
       resolution={resolution}
@@ -39,6 +91,32 @@ export default async function DashboardPage({
           case "selected":
             return (
               <div className="space-y-6">
+                <section aria-labelledby="metrics-heading">
+                  <h2 id="metrics-heading" className="sr-only">
+                    Metrik Statistik Hari Ini
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-lg border border-emerald-900/10 bg-white p-4 shadow-sm">
+                      <div className="text-sm font-medium text-emerald-700">Total Pendapatan Hari Ini</div>
+                      <div className="mt-2 text-2xl font-bold text-emerald-950">
+                        Rp{metrics.revenueToday.toLocaleString("id-ID")}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-900/10 bg-white p-4 shadow-sm">
+                      <div className="text-sm font-medium text-emerald-700">Total Pesanan Hari Ini</div>
+                      <div className="mt-2 text-2xl font-bold text-emerald-950">
+                        {metrics.ordersToday}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-900/10 bg-white p-4 shadow-sm">
+                      <div className="text-sm font-medium text-emerald-700">Pesanan Aktif / Diproses</div>
+                      <div className="mt-2 text-2xl font-bold text-emerald-950">
+                        {metrics.activeOrders}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
                 <section aria-labelledby="outlet-info-heading">
                   <h2 id="outlet-info-heading" className="sr-only">
                     Informasi outlet aktif

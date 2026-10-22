@@ -4,14 +4,16 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TableQrDialog } from "@/app/dashboard/meja/TableQrDialog";
-import { generateTableTokenAction } from "@/app/dashboard/table-actions";
+import { generateTableTokenAction, getTableQrAction } from "@/app/dashboard/table-actions";
 import type { DiningTableSummary } from "@/lib/services/dining-table.service";
 
 vi.mock("@/app/dashboard/table-actions", () => ({
   generateTableTokenAction: vi.fn(),
+  getTableQrAction: vi.fn().mockResolvedValue({ ok: true, data: { token: "" } }),
 }));
 
 const mockedGenerateTableTokenAction = vi.mocked(generateTableTokenAction);
+const mockedGetTableQrAction = vi.mocked(getTableQrAction);
 const outletId = "outlet-1";
 
 const mockTable: DiningTableSummary = {
@@ -86,7 +88,7 @@ describe("TableQrDialog", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Generate QR Baru/i }));
 
-    await waitFor(() => expect(screen.getByText("QR Code (Siap Dicetak)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByAltText("QR Code Meja M01")).toBeInTheDocument());
     const urlInput = screen.getByLabelText(/URL Publik Pelanggan/i) as HTMLInputElement;
     expect(urlInput.value).toContain("/p/table-1?token=secret-qr-token-xyz");
   });
@@ -100,7 +102,7 @@ describe("TableQrDialog", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Generate QR Baru/i }));
 
-    await waitFor(() => expect(screen.getByText("QR Code (Siap Dicetak)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByAltText("QR Code Meja M01")).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole("button", { name: /Copy/i }));
 

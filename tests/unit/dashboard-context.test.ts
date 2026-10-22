@@ -461,6 +461,7 @@ describe("resolveDashboardContext - capabilities", () => {
         canManageCatalog: false,
         canViewTables: false,
         canManageTables: false,
+        canViewOrders: false,
       });
     }
   });
@@ -479,6 +480,7 @@ describe("resolveDashboardContext - capabilities", () => {
         canManageCatalog: true,
         canViewTables: false,
         canManageTables: false,
+        canViewOrders: false,
       });
     }
   });
@@ -528,6 +530,7 @@ describe("resolveDashboardContext - capabilities", () => {
         canManageCatalog: false,
         canViewTables: false,
         canManageTables: true,
+        canViewOrders: false,
       });
     }
   });
@@ -546,6 +549,7 @@ describe("resolveDashboardContext - capabilities", () => {
         canManageCatalog: false,
         canViewTables: false,
         canManageTables: false,
+        canViewOrders: false,
       });
     }
   });
@@ -564,6 +568,7 @@ describe("resolveDashboardContext - capabilities", () => {
         canManageCatalog: false,
         canViewTables: false,
         canManageTables: false,
+        canViewOrders: false,
       });
     }
   });
