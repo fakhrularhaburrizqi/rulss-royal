@@ -20,19 +20,19 @@ export default async function PesananPage({
 
   const { user, tenant } = await requireActiveUser();
 
-  if (resolution.kind !== "selected" || !resolution.capabilities.canViewOrders) {
+  if (resolution?.kind !== "selected" || resolution?.capabilities?.canViewOrders !== true) {
     return (
       <DashboardShell
         resolution={resolution}
-        tenantName={tenant.name}
-        tenantCode={tenant.code}
-        userName={user.name}
+        tenantName={tenant?.name ?? "-"}
+        tenantCode={tenant?.code ?? "-"}
+        userName={user?.name ?? "-"}
         currentPath="/dashboard/pesanan"
       >
         <div className="rounded-lg border border-emerald-900/10 bg-white p-6 text-center">
           <h2 className="text-lg font-semibold text-emerald-950">Pesanan</h2>
           <p className="mt-2 text-sm text-emerald-700">
-            {resolution.kind !== "selected"
+            {resolution?.kind !== "selected"
               ? "Pilih outlet terlebih dahulu untuk melihat pesanan."
               : "Anda tidak memiliki izin untuk melihat pesanan di outlet ini."}
           </p>
@@ -43,7 +43,7 @@ export default async function PesananPage({
 
   let initialOrders: OrderListItem[] = [];
   try {
-    initialOrders = await listOrdersForOutlet(resolution.outlet.id);
+    initialOrders = (await listOrdersForOutlet(resolution.outlet?.id ?? "")) ?? [];
   } catch {
     initialOrders = [];
   }
@@ -51,13 +51,13 @@ export default async function PesananPage({
   return (
     <DashboardShell
       resolution={resolution}
-      tenantName={tenant.name}
-      tenantCode={tenant.code}
-      userName={user.name}
+      tenantName={tenant?.name ?? "-"}
+      tenantCode={tenant?.code ?? "-"}
+      userName={user?.name ?? "-"}
       currentPath="/dashboard/pesanan"
     >
       <OrderListPage
-        outletId={resolution.outlet.id}
+        outletId={resolution.outlet?.id ?? ""}
         initialOrders={initialOrders}
       />
     </DashboardShell>

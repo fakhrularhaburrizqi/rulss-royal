@@ -28,8 +28,8 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
   ];
 
   const filteredItems = navItems.map((item) => {
-    if (item.requiredPermission && resolution.kind === "selected") {
-      return { ...item, isAvailable: resolution.capabilities[item.requiredPermission] };
+    if (item.requiredPermission && resolution?.kind === "selected") {
+      return { ...item, isAvailable: resolution?.capabilities?.[item.requiredPermission] === true };
     }
     return item;
   });
@@ -63,7 +63,7 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
             );
           }
 
-          const outletId = resolution.kind === "selected" ? resolution.outlet.id : undefined;
+          const outletId = resolution?.kind === "selected" ? resolution?.outlet?.id : undefined;
           const href = outletId
             ? `${item.href}?outlet=${outletId}`
             : item.href;

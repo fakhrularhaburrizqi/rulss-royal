@@ -70,7 +70,7 @@ export default async function DashboardPage({
   })();
 
   let metrics = { revenueToday: 0, ordersToday: 0, activeOrders: 0 };
-  if (resolution.kind === "selected") {
+  if (resolution?.kind === "selected" && resolution.outlet?.id && tenant?.id) {
     try {
       metrics = await getDashboardMetrics(tenant.id, resolution.outlet.id);
     } catch {
@@ -81,13 +81,13 @@ export default async function DashboardPage({
   return (
     <DashboardShell
       resolution={resolution}
-      tenantName={tenant.name}
-      tenantCode={tenant.code}
-      userName={user.name}
+      tenantName={tenant?.name ?? "-"}
+      tenantCode={tenant?.code ?? "-"}
+      userName={user?.name ?? "-"}
       currentPath="/dashboard"
     >
       {(() => {
-        switch (resolution.kind) {
+        switch (resolution?.kind) {
           case "selected":
             return (
               <div className="space-y-6">
@@ -126,13 +126,13 @@ export default async function DashboardPage({
                       <div>
                         <dt className="text-sm font-medium text-emerald-700">Outlet</dt>
                         <dd className="mt-1 text-sm font-semibold text-emerald-950">
-                          {resolution.outlet.name} ({resolution.outlet.code})
+                          {resolution?.outlet?.name ?? "-"} ({resolution?.outlet?.code ?? "-"})
                         </dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-emerald-700">ID</dt>
                         <dd className="mt-1 text-sm font-mono text-emerald-900">
-                          {resolution.outlet.id}
+                          {resolution?.outlet?.id ?? "-"}
                         </dd>
                       </div>
                     </dl>
@@ -144,55 +144,42 @@ export default async function DashboardPage({
                     Akses Fitur
                   </h2>
                   <ul className="mt-3 flex flex-wrap gap-2" role="list">
-                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
-                      resolution.capabilities.canViewCatalog
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}>
-                      Lihat Katalog {resolution.capabilities.canViewCatalog && "✓"}
-                    </li>
-                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
-                      resolution.capabilities.canManageCatalog
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}>
-                      Kelola Katalog {resolution.capabilities.canManageCatalog && "✓"}
-                    </li>
-                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
-                      resolution.capabilities.canViewTables
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}>
-                      Lihat Meja {resolution.capabilities.canViewTables && "✓"}
-                    </li>
-                    <li className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
-                      resolution.capabilities.canManageTables
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}>
-                      Kelola Meja {resolution.capabilities.canManageTables && "✓"}
-                    </li>
-                  </ul>
+                      {[
+                        { label: "Lihat Katalog", allowed: resolution?.capabilities?.canViewCatalog === true },
+                        { label: "Kelola Katalog", allowed: resolution?.capabilities?.canManageCatalog === true },
+                        { label: "Lihat Meja", allowed: resolution?.capabilities?.canViewTables === true },
+                        { label: "Kelola Meja", allowed: resolution?.capabilities?.canManageTables === true },
+                      ].map((cap) => (
+                        <li
+                          key={cap.label}
+                          className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium ${
+                            cap.allowed ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {cap.label} {cap.allowed && "✓"}
+                        </li>
+                      ))}
+                    </ul>
                 </section>
 
                 <section aria-labelledby="outlets-heading">
-                  <h2 id="outlets-heading" className="text-lg font-semibold text-emerald-950">
-                    Outlet Tersedia ({resolution.outlets.length})
-                  </h2>
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
-                    {resolution.outlets.map((outlet) => (
-                      <li
-                        key={outlet.id}
-                        className={`rounded-lg border p-3 ${
-                          outlet.id === resolution.outlet.id
-                            ? "border-emerald-300 bg-emerald-50"
-                            : "border-emerald-900/10 bg-white hover:border-emerald-300"
-                        }`}
-                      >
-                        <div className="font-semibold text-emerald-950">{outlet.name}</div>
-                        <div className="text-sm text-emerald-700">{outlet.code}</div>
-                        <div className="mt-1 text-xs font-mono text-emerald-500">{outlet.id}</div>
-                        {outlet.id === resolution.outlet.id && (
+                <h2 id="outlets-heading" className="text-lg font-semibold text-emerald-950">
+                      Outlet Tersedia ({resolution?.outlets?.length ?? 0})
+                    </h2>
+                    <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                      {(resolution?.outlets ?? []).map((outlet) => (
+                        <li
+                          key={outlet?.id ?? outlet?.code ?? outlet?.name}
+                          className={`rounded-lg border p-3 ${
+                            outlet?.id === resolution?.outlet?.id
+                              ? "border-emerald-300 bg-emerald-50"
+                              : "border-emerald-900/10 bg-white hover:border-emerald-300"
+                          }`}
+                        >
+                          <div className="font-semibold text-emerald-950">{outlet?.name ?? "-"}</div>
+                          <div className="text-sm text-emerald-700">{outlet?.code ?? "-"}</div>
+                          <div className="mt-1 text-xs font-mono text-emerald-500">{outlet?.id ?? "-"}</div>
+                          {outlet?.id === resolution?.outlet?.id && (
                           <span className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                             Aktif
                           </span>
@@ -234,17 +221,17 @@ export default async function DashboardPage({
                 <p className="mt-2 text-sm text-red-800">
                   Outlet yang diminta tidak ditemukan atau akses ditolak.
                 </p>
-                {resolution.outlets.length > 0 && (
+                {resolution?.outlets?.length > 0 && (
                   <div className="mt-4 text-left">
                     <p className="text-sm font-medium text-red-700">Pilih outlet yang tersedia:</p>
                     <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
-                      {resolution.outlets.map((outlet) => (
+                      {(resolution?.outlets ?? []).map((outlet) => (
                         <li
-                          key={outlet.id}
+                          key={outlet?.id ?? outlet?.code ?? outlet?.name}
                           className="rounded-lg border border-red-200 bg-white p-3"
                         >
-                          <div className="font-semibold text-red-900">{outlet.name}</div>
-                          <div className="text-sm text-red-700">{outlet.code}</div>
+                          <div className="font-semibold text-red-900">{outlet?.name ?? "-"}</div>
+                          <div className="text-sm text-red-700">{outlet?.code ?? "-"}</div>
                         </li>
                       ))}
                     </ul>

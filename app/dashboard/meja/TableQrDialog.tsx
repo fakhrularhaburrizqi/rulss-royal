@@ -35,7 +35,7 @@ export function TableQrDialog({
       setCopied(false);
       getTableQrAction({ tableId: table.id, outletId })
         .then((res) => {
-          if (res.ok && res.data.token) {
+          if (res?.ok && res.data?.token) {
             setToken(res.data.token);
           } else {
             setToken(null);
@@ -59,8 +59,8 @@ export function TableQrDialog({
         outletId,
       });
 
-      if (!result.ok) {
-        setError(result.message);
+      if (!result?.ok || !result.data?.token) {
+        setError(result?.ok ? "Terjadi kesalahan. Silakan coba lagi." : (result?.message ?? "Terjadi kesalahan. Silakan coba lagi."));
         setIsGenerating(false);
       } else {
         setToken(result.data.token);

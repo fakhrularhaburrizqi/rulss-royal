@@ -14,11 +14,11 @@ interface OrderTableProps {
 }
 
 export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
-  const [orders, setOrders] = useState<OrderListItem[]>(initialOrders);
+  const [orders, setOrders] = useState<OrderListItem[]>(() => initialOrders ?? []);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const formatRupiah = (value: number) => `Rp${value.toLocaleString("id-ID")}`;
+  const formatRupiah = (value: number) => `Rp${(value ?? 0).toLocaleString("id-ID")}`;
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -33,25 +33,28 @@ export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
       case OrderStatus.CANCELLED:
         return { label: "Dibatalkan", className: "bg-red-100 text-red-800" };
       default:
-        return { label: status, className: "bg-gray-100 text-gray-800" };
+        return {
+          label: typeof status === "string" ? status : "Tidak diketahui",
+          className: "bg-gray-100 text-gray-800",
+        };
     }
   };
 
   const handlePrintReceipt = (order: OrderListItem) => {
     openReceiptPrintWindow({
-      orderNumber: order.orderNumber,
+      orderNumber: order.orderNumber ?? "-",
       createdAt: order.createdAt,
-      customerName: order.customerName,
-      note: order.note,
+      customerName: order.customerName ?? null,
+      note: order.note ?? null,
       source: order.source,
-      total: order.total,
-      diningTable: order.diningTable,
-      items: order.items.map((item) => ({
-        menuNameSnapshot: item.menuNameSnapshot,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal,
-        note: item.note,
+      total: order.total ?? 0,
+      diningTable: order.diningTable ?? null,
+      items: (order.items ?? []).map((item) => ({
+        menuNameSnapshot: item.menuNameSnapshot ?? "-",
+        quantity: item.quantity ?? 0,
+        unitPrice: item.unitPrice ?? 0,
+        subtotal: item.subtotal ?? 0,
+        note: item.note ?? null,
       })),
     });
   };
@@ -66,13 +69,14 @@ export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
         version: currentVersion,
       });
 
-      if (!result.ok) {
-        setErrorMessage(result.message);
+      if (!result.ok || !result.data) {
+        setErrorMessage(result.ok ? "Terjadi kesalahan. Silakan coba lagi." : result.message);
       } else {
+        const updated = result.data;
         setOrders((prev) =>
           prev.map((o) =>
             o.id === orderId
-              ? { ...o, status: result.data.status, version: result.data.version }
+              ? { ...o, status: updated.status, version: updated.version }
               : o
           )
         );
@@ -121,13 +125,13 @@ export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
                 return (
                   <TableRow key={order.id}>
                     <TableCell className="font-bold text-emerald-950 font-mono">
-                      {order.orderNumber}
+                      {order.orderNumber ?? "-"}
                     </TableCell>
                     <TableCell>
                       <span className="font-medium text-emerald-900">
-                        {order.diningTable ? `Meja ${order.diningTable.code}` : "Kasir"}
+                        {order.diningTable ? `Meja ${order.diningTable.code ?? "-"}` : "Kasir"}
                       </span>
-                      <span className="block text-xs text-gray-500">{order.source}</span>
+                      <span className="block text-xs text-gray-500">{order.source ?? "-"}</span>
                     </TableCell>
                     <TableCell className="text-emerald-900">
                       {order.customerName || "-"}
@@ -135,9 +139,9 @@ export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
                     </TableCell>
                     <TableCell>
                       <ul className="text-xs space-y-1">
-                        {order.items.map((item) => (
+                        {(order.items ?? []).map((item) => (
                           <li key={item.id} className="text-gray-800">
-                            <span className="font-bold text-emerald-800">{item.quantity}x</span> {item.menuNameSnapshot}
+                            <span className="font-bold text-emerald-800">{item.quantity ?? 0}x</span> {item.menuNameSnapshot ?? "-"}
                             {item.note && <span className="text-gray-500 italic"> ({item.note})</span>}
                           </li>
                         ))}

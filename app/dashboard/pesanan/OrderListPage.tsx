@@ -27,12 +27,12 @@ function OrderQueryScope({ outletId, initialOrders }: OrderListPageProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <OrderTable outletId={outletId} initialOrders={initialOrders} />
+      <OrderTable outletId={outletId} initialOrders={initialOrders ?? []} />
     </QueryClientProvider>
   );
 }
 
 export function OrderListPage({ outletId, initialOrders }: OrderListPageProps) {
   const scopeKey = JSON.stringify([outletId]);
-  return <OrderQueryScope key={scopeKey} outletId={outletId} initialOrders={initialOrders} />;
+  return <OrderQueryScope key={scopeKey} outletId={outletId} initialOrders={initialOrders ?? []} />;
 }

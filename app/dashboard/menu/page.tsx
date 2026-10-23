@@ -20,19 +20,19 @@ export default async function MenuPage({
 
   const { user, tenant } = await requireActiveUser();
 
-  if (resolution.kind !== "selected" || !resolution.capabilities.canViewCatalog) {
+  if (resolution?.kind !== "selected" || resolution?.capabilities?.canViewCatalog !== true) {
     return (
       <DashboardShell
         resolution={resolution}
-        tenantName={tenant.name}
-        tenantCode={tenant.code}
-        userName={user.name}
+        tenantName={tenant?.name ?? "-"}
+        tenantCode={tenant?.code ?? "-"}
+        userName={user?.name ?? "-"}
         currentPath="/dashboard/menu"
       >
         <div className="rounded-lg border border-emerald-900/10 bg-white p-6 text-center">
           <h2 className="text-lg font-semibold text-emerald-950">Menu</h2>
           <p className="mt-2 text-sm text-emerald-700">
-            {resolution.kind !== "selected"
+            {resolution?.kind !== "selected"
               ? "Pilih outlet terlebih dahulu untuk melihat menu."
               : "Anda tidak memiliki izin untuk melihat menu di outlet ini."}
           </p>
@@ -44,7 +44,7 @@ export default async function MenuPage({
   let initialData;
   try {
     initialData = await listMenuItemsPaginated({
-      outletId: resolution.outlet.id,
+      outletId: resolution.outlet?.id ?? "",
       limit: 50,
       filter: "all",
       search: undefined,
@@ -58,17 +58,17 @@ export default async function MenuPage({
   return (
     <DashboardShell
       resolution={resolution}
-      tenantName={tenant.name}
-      tenantCode={tenant.code}
-      userName={user.name}
+      tenantName={tenant?.name ?? "-"}
+      tenantCode={tenant?.code ?? "-"}
+      userName={user?.name ?? "-"}
       currentPath="/dashboard/menu"
     >
       <MenuListPage
-        authScope={{ tenantId: tenant.id, userId: user.id }}
-        outletId={resolution.outlet.id}
+        authScope={{ tenantId: tenant?.id ?? "", userId: user?.id ?? "" }}
+        outletId={resolution.outlet?.id ?? ""}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
-        canManageCatalog={resolution.capabilities.canManageCatalog}
+        canManageCatalog={resolution?.capabilities?.canManageCatalog === true}
       />
     </DashboardShell>
   );

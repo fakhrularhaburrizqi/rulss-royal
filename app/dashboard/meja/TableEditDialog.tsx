@@ -119,25 +119,29 @@ export function TableEditDialog({
         capacity: data.capacity !== undefined ? Number(data.capacity) : undefined,
       });
 
-      if (!result.ok) {
-        if (result.code === "TABLE_CODE_CONFLICT") {
+      if (!result?.ok) {
+        if (result?.code === "TABLE_CODE_CONFLICT") {
           form.setError("code", { type: "server", message: "Kode meja sudah digunakan di outlet ini." });
-        } else if (result.code === "TABLE_VERSION_CONFLICT") {
+        } else if (result?.code === "TABLE_VERSION_CONFLICT") {
           setDomainError("Data meja telah diubah oleh pengguna lain. Silakan muat ulang.");
         } else {
-          setDomainError(result.message);
+          setDomainError(result?.message ?? "Terjadi kesalahan. Silakan coba lagi.");
         }
         setIsSubmitting(false);
+      } else if (!result.data) {
+        setDomainError("Terjadi kesalahan. Silakan coba lagi.");
+        setIsSubmitting(false);
       } else {
+        const updated = result.data;
         await queryClient.invalidateQueries({ queryKey: ["tables"] });
         await queryClient.invalidateQueries({ queryKey: ["tables", outletId] });
-        onSuccess?.(result.data);
+        onSuccess?.(updated);
         form.reset({
           outletId,
-          tableId: result.data.id,
-          expectedUpdatedAt: result.data.updatedAt,
-          code: result.data.code,
-          capacity: result.data.capacity,
+          tableId: updated.id,
+          expectedUpdatedAt: updated.updatedAt,
+          code: updated.code,
+          capacity: updated.capacity,
         });
         setIsSubmitting(false);
         onClose();

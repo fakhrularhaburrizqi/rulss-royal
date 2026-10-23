@@ -193,8 +193,10 @@ export function MenuItemTable({
                     </TableRow>
                   ) : (
                     rows.map((row) => {
-                      const status = getStatusLabel(row.deletedAt, row.isActive);
-                      const categoryUnavailable = row.category.deletedAt !== null || !row.category.isActive;
+                      const status = getStatusLabel(row.deletedAt ?? null, row.isActive === true);
+                      const category = row.category ?? null;
+                      const categoryUnavailable =
+                        category === null || category.deletedAt !== null || !category.isActive;
                       return (
                         <TableRow key={row.id}>
                           <TableCell className="font-medium text-emerald-950">{row.name}</TableCell>
@@ -204,7 +206,7 @@ export function MenuItemTable({
                                 Kategori tidak tersedia
                               </span>
                             ) : (
-                              <span className="text-emerald-900">{row.category.name}</span>
+                              <span className="text-emerald-900">{category?.name ?? "-"}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right font-medium tabular-nums text-emerald-950">

@@ -14,8 +14,9 @@ export function OutletSelector({ outlets, selectedOutletId }: OutletSelectorProp
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, setIsPending] = useState(false);
+  const safeOutlets = outlets ?? [];
 
-  if (outlets.length === 0) {
+  if (safeOutlets.length === 0) {
     return (
       <span className="text-sm text-gray-500" aria-live="polite">
         Tidak ada outlet aktif
@@ -32,8 +33,8 @@ export function OutletSelector({ outlets, selectedOutletId }: OutletSelectorProp
     setTimeout(() => setIsPending(false), 300);
   }
 
-  if (outlets.length === 1) {
-    const outlet = outlets[0];
+  if (safeOutlets.length === 1) {
+    const outlet = safeOutlets[0];
     return (
       <div className="flex items-center gap-2">
         <label htmlFor="outlet-select" className="sr-only">
@@ -72,7 +73,7 @@ export function OutletSelector({ outlets, selectedOutletId }: OutletSelectorProp
         aria-label="Pilih outlet aktif"
       >
         <option value="">Pilih outlet</option>
-        {outlets.map((outlet) => (
+        {safeOutlets.map((outlet) => (
           <option key={outlet.id} value={outlet.id}>
             {outlet.name} ({outlet.code})
           </option>

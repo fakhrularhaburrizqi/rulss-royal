@@ -16,6 +16,9 @@
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
     "@prisma/client": "^6.19.3",

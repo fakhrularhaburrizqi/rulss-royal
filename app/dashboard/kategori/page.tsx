@@ -19,19 +19,19 @@ export default async function KategoriPage({
 
   const { user, tenant } = await requireActiveUser();
 
-  if (resolution.kind !== "selected" || !resolution.capabilities.canViewCatalog) {
+  if (resolution?.kind !== "selected" || resolution?.capabilities?.canViewCatalog !== true) {
     return (
       <DashboardShell
         resolution={resolution}
-        tenantName={tenant.name}
-        tenantCode={tenant.code}
-        userName={user.name}
+        tenantName={tenant?.name ?? "-"}
+        tenantCode={tenant?.code ?? "-"}
+        userName={user?.name ?? "-"}
         currentPath="/dashboard/kategori"
       >
         <div className="rounded-lg border border-emerald-900/10 bg-white p-6 text-center">
           <h2 className="text-lg font-semibold text-emerald-950">Kategori</h2>
           <p className="mt-2 text-sm text-emerald-700">
-            {resolution.kind !== "selected"
+            {resolution?.kind !== "selected"
               ? "Pilih outlet terlebih dahulu untuk melihat kategori."
               : "Anda tidak memiliki izin untuk melihat katalog di outlet ini."}
           </p>
@@ -43,7 +43,7 @@ export default async function KategoriPage({
   let initialData;
   try {
     initialData = await listMenuCategoriesPaginated({
-      outlet: resolution.outlet.id,
+      outlet: resolution.outlet?.id ?? "",
       limit: 50,
       filter: "all",
       search: undefined,
@@ -57,17 +57,17 @@ export default async function KategoriPage({
   return (
     <DashboardShell
       resolution={resolution}
-      tenantName={tenant.name}
-      tenantCode={tenant.code}
-      userName={user.name}
+      tenantName={tenant?.name ?? "-"}
+      tenantCode={tenant?.code ?? "-"}
+      userName={user?.name ?? "-"}
       currentPath="/dashboard/kategori"
     >
       <CategoryListPage
-        authScope={{ tenantId: tenant.id, userId: user.id }}
-        outletId={resolution.outlet.id}
+        authScope={{ tenantId: tenant?.id ?? "", userId: user?.id ?? "" }}
+        outletId={resolution.outlet?.id ?? ""}
         initialData={initialData}
         initialDataUpdatedAt={initialDataUpdatedAt}
-        canManageCatalog={resolution.capabilities.canManageCatalog}
+        canManageCatalog={resolution?.capabilities?.canManageCatalog === true}
       />
     </DashboardShell>
   );

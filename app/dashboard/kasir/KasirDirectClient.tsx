@@ -32,6 +32,9 @@ export function KasirDirectClient({
   categories,
   menuItems,
 }: KasirDirectClientProps) {
+  const safeTables = useMemo(() => tables ?? [], [tables]);
+  const safeCategories = useMemo(() => categories ?? [], [categories]);
+  const safeMenuItems = useMemo(() => menuItems ?? [], [menuItems]);
   const [selectedTableId, setSelectedTableId] = useState<string>(TAKEAWAY_VALUE);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -41,36 +44,36 @@ export function KasirDirectClient({
   const [success, setSuccess] = useState<SuccessState | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const activeTables = useMemo(() => tables.filter((t) => t.isActive), [tables]);
+  const activeTables = useMemo(() => safeTables.filter((t) => t.isActive), [safeTables]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (q === "") return menuItems;
-    return menuItems.filter(
+    if (q === "") return safeMenuItems;
+    return safeMenuItems.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
-        categories.some((c) => c.id === item.categoryId && c.name.toLowerCase().includes(q))
+        safeCategories.some((c) => c.id === item.categoryId && c.name.toLowerCase().includes(q))
     );
-  }, [menuItems, categories, search]);
+  }, [safeMenuItems, safeCategories, search]);
 
   const itemsByCategory = useMemo(() => {
-    return categories
+    return safeCategories
       .map((category) => ({
         category,
         items: filteredItems.filter((item) => item.categoryId === category.id),
       }))
       .filter((group) => group.items.length > 0);
-  }, [categories, filteredItems]);
+  }, [safeCategories, filteredItems]);
 
   const cartLines = useMemo(() => {
-    return menuItems
+    return safeMenuItems
       .filter((item) => (cart[item.id] ?? 0) > 0)
       .map((item) => ({
         item,
         quantity: cart[item.id] ?? 0,
         subtotal: item.price * (cart[item.id] ?? 0),
       }));
-  }, [menuItems, cart]);
+  }, [safeMenuItems, cart]);
 
   const totalQuantity = cartLines.reduce((acc, line) => acc + line.quantity, 0);
   const totalPrice = cartLines.reduce((acc, line) => acc + line.subtotal, 0);
@@ -119,13 +122,14 @@ export function KasirDirectClient({
         })),
       });
 
-      if (!result.ok) {
-        setErrorMessage(result.message);
+      if (!result?.ok || !result.data?.receipt) {
+        setErrorMessage(result?.ok ? "Terjadi kesalahan. Silakan coba lagi." : (result?.message ?? "Terjadi kesalahan. Silakan coba lagi."));
       } else {
+        const created = result.data;
         setSuccess({
-          orderNumber: result.data.orderNumber,
-          total: result.data.total,
-          receipt: result.data.receipt,
+          orderNumber: created.orderNumber ?? "-",
+          total: created.total ?? 0,
+          receipt: created.receipt,
         });
       }
     });

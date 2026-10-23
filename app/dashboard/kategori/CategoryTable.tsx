@@ -552,7 +552,7 @@ export function CategoryTable({
           form={editForm}
           triggerRef={editTriggerRef}
           fallbackTriggerRef={triggerRef}
-          isArchived={editSnapshot?.deletedAt !== null}
+          isArchived={Boolean(editSnapshot?.deletedAt)}
         />
 
         {/* Archive/Restore confirmation dialog */}

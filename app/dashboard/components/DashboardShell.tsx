@@ -22,7 +22,7 @@ export function DashboardShell({
   userName,
   currentPath,
 }: DashboardShellProps) {
-  const isSelected = resolution.kind === "selected";
+  const isSelected = resolution?.kind === "selected";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,15 +38,15 @@ export function DashboardShell({
             />
             <h1 className="text-lg font-semibold text-emerald-950">Rulss Royal</h1>
             <span className="hidden sm:inline-flex items-center rounded-lg border border-emerald-900/10 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-900">
-              {tenantName} ({tenantCode})
+              {tenantName ?? "-"} ({tenantCode ?? "-"})
             </span>
           </div>
           <div className="flex items-center gap-3">
             <OutletSelector
-              outlets={resolution.outlets}
-              selectedOutletId={isSelected ? resolution.outlet.id : null}
+              outlets={resolution?.outlets ?? []}
+              selectedOutletId={isSelected ? (resolution?.outlet?.id ?? null) : null}
             />
-            <span className="hidden sm:inline text-sm text-gray-600">{userName}</span>
+            <span className="hidden sm:inline text-sm text-gray-600">{userName ?? "-"}</span>
             <form action={logoutAction}>
               <button
                 type="submit"
