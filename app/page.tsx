@@ -191,12 +191,12 @@ export default function Home() {
                 </li>
                 <li className="flex items-start justify-between gap-4">
                   <span>Es Teh Manis</span>
-                  <span className="font-semibold">Rp5.000</span>
+                  <span className="font-semibold">Rp7.000</span>
                 </li>
               </ul>
               <div className="mt-3 flex items-center justify-between border-t border-dashed border-emerald-900/20 pt-3 text-base font-bold text-emerald-950">
                 <span>Total</span>
-                <span>Rp23.000</span>
+                <span>Rp25.000</span>
               </div>
               <p className="mt-3 text-xs text-emerald-900/80">
                 Pesanan contoh dari meja. Bagian dari demo UI.
