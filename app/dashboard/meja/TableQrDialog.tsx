@@ -109,7 +109,7 @@ export function TableQrDialog({
           {!token ? (
             <div className="space-y-4">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800" role="alert">
-                Catatan: Membuat QR Code baru akan otomatis menonaktifkan kode QR yang lama.
+                Membuat QR baru akan menonaktifkan QR Code lama.
               </div>
 
               {error && (
