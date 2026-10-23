@@ -109,7 +109,7 @@ export function TableQrDialog({
           {!token ? (
             <div className="space-y-4">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800" role="alert">
-                Menghasilkan QR baru akan membuat QR lama tidak berlaku.
+                Catatan: Membuat QR Code baru akan otomatis menonaktifkan kode QR yang lama.
               </div>
 
               {error && (
@@ -133,7 +133,7 @@ export function TableQrDialog({
                   disabled={isGenerating}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  {isGenerating ? "Menghasilkan..." : "Generate QR Baru"}
+                  {isGenerating ? "Menghasilkan..." : "Buat QR Code"}
                 </Button>
               </div>
             </div>
