@@ -4,7 +4,7 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import { OrderSource, OrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getOrderErrorMessage, toOrderError } from "@/lib/order/errors";
+import { getOrderErrorMessage, isOrderNumberUniqueViolation, toOrderError } from "@/lib/order/errors";
 import { itemSubtotal, orderTotals } from "@/lib/order/pricing";
 import {
   formatOrderNumber,
@@ -183,8 +183,8 @@ export async function createPublicOrderAction(payload: {
         );
 
         return { ok: true, data: result };
-      } catch (err: any) {
-        if (err?.code === "P2002" && attempt < MAX_ORDER_CREATE_ATTEMPTS) {
+      } catch (err: unknown) {
+        if (isOrderNumberUniqueViolation(err) && attempt < MAX_ORDER_CREATE_ATTEMPTS) {
           continue;
         }
         throw err;

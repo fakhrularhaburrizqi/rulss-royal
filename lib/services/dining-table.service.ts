@@ -464,7 +464,7 @@ export async function generateQrToken(input: unknown): Promise<string> {
       const tokenHash = await bcrypt.hash(rawToken, 12);
       const mutationTime = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
 
-      const updated = await (tx.diningTable as any).updateMany({
+      const updated = await tx.diningTable.updateMany({
         where: {
           id: current.id,
           outletId: authorizedOutletId,
@@ -525,7 +525,7 @@ export async function getTableQrToken(input: unknown): Promise<string | null> {
   const context = await requireOrderContext(outletId, "tables.view");
 
   try {
-    const table = await (db.diningTable as any).findFirst({
+    const table = await db.diningTable.findFirst({
       where: {
         id: tableId,
         outletId: context.outletId,
