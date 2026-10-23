@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Image from "next/image";
+import { CheckCircle2 } from "lucide-react";
 import type { PublicCatalogResult } from "@/lib/services/public-menu.service";
 import { createPublicOrderAction } from "./actions";
 
@@ -89,8 +90,8 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
     return (
       <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen p-6 flex flex-col items-center justify-center text-center">
         <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-800 p-8 shadow-md w-full space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-xl">
-            ✓
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 mb-4">
+            <CheckCircle2 className="h-8 w-8" strokeWidth={2} />
           </div>
           <h1 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">Pesanan Berhasil Dibuat!</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300">

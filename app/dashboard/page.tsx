@@ -3,6 +3,7 @@ import { resolveDashboardContext } from "@/lib/dashboard/context";
 import { DashboardShell } from "./components/DashboardShell";
 import { db } from "@/lib/db";
 import { OrderStatus } from "@prisma/client";
+import { Check } from "lucide-react";
 
 async function getDashboardMetrics(tenantId: string, outletId: string) {
   const now = new Date();
@@ -156,7 +157,7 @@ export default async function DashboardPage({
                             cap.allowed ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
                           }`}
                         >
-                          {cap.label} {cap.allowed && "✓"}
+                          {cap.label} {cap.allowed && <Check className="ml-1.5 h-4 w-4 flex-shrink-0" />}
                         </li>
                       ))}
                     </ul>
