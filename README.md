@@ -1,12 +1,24 @@
-# Rulss Royal
+# 👑 Rulss Royal — POS & QR Ordering System
 
-**Aplikasi pemesanan menu melalui QR meja dan dashboard pengelola untuk UMKM kuliner.**
+![Logo Rulss Royal](public/logo.png)
+
+**Aplikasi POS & pemesanan menu melalui QR meja untuk UMKM kuliner.**
+
+## Informasi Tugas
+
+| | |
+|---|---|
+| Mata Kuliah | Pemrograman Website (UTS Individu) |
+| Nama Mahasiswa | Fakhrul Arhabur Rizqi |
+| NIM | 60225054 |
+| Email Dosen Pengampu | mujibulhakim@gmail.com |
+| Live Demo Vercel | [https://rulss-royal.vercel.app](https://rulss-royal.vercel.app) |
 
 Rulss Royal memungkinkan pelanggan memindai QR meja, melihat menu, memilih item, dan mengirim pesanan tanpa membuat akun. Pengelola mengatur katalog dan meja, menerima pesanan, serta memperbarui status melalui dashboard dengan autentikasi dan pembatasan akses tenant/outlet.
 
-Rilis awal ditujukan untuk demonstrasi UAS dan deployment terbatas menggunakan data uji. **Alur QR sampai pesanan diterima pengelola adalah fitur inti rilis awal**, bukan hanya roadmap. Modul finansial dan operasional yang lebih kompleks dilanjutkan setelah alur utama tersebut berjalan.
+Rilis awal ditujukan untuk UTS Pemrograman Website dan deployment terbatas menggunakan data uji. **Alur QR sampai pesanan diterima pengelola serta POS walk-in kasir adalah fitur inti rilis awal**, bukan hanya roadmap. Modul finansial dan operasional yang lebih kompleks dilanjutkan setelah alur utama tersebut berjalan.
 
-> Dokumen ini membedakan fitur yang tersedia dari target rilis. QR-order, antarmuka Menu/Meja, penerimaan pesanan, dan deployment belum diklaim selesai hanya karena fondasi backend atau demo sudah tersedia.
+> Dokumen ini membedakan fitur yang tersedia dari target rilis. UI Menu, UI Meja, POS walk-in, dan cetak struk termal telah selesai; alur QR publik, penerimaan pesanan, dan deployment tetap tidak diklaim selesai hanya karena fondasi backend atau demo tersedia.
 
 ## 1. Tujuan dan Alur Utama
 
@@ -100,7 +112,7 @@ Archive/restore Menu dapat dilanjutkan sebagai peningkatan terpisah apabila tida
 
 ## 3. Implementasi yang Tersedia
 
-Bagian ini berdasarkan checkpoint implementasi yang telah diverifikasi dan dilaporkan. Tidak menyatakan seluruh target pada bagian 2 sudah selesai.
+Bagian ini berdasarkan checkpoint implementasi yang telah diverifikasi: **UI Management Menu, UI Meja, Kasir Direct Walk-in POS, dan Cetak Struk Termal telah selesai dikerjakan serta lulus 169 unit test.** Bagian ini tidak menyatakan seluruh target pada bagian 2 sudah selesai.
 
 | Area | Implementasi tersedia | Batasnya |
 |---|---|---|
@@ -108,16 +120,17 @@ Bagian ini berdasarkan checkpoint implementasi yang telah diverifikasi dan dilap
 | Identity/outlet | Login dasar, RBAC helpers, tenant/outlet context, dashboard shell dan selector | Administration UI/PIN/approval lengkap bukan fitur selesai |
 | Kategori | List/search/filter/pagination, tambah/edit/arsip/pulihkan, conflict handling, audit backend, focus dan refresh feedback | Mutation nyata pada deployment serta E2E masih diperlukan |
 | API katalog | Management list kategori dan Menu, cursor pagination, scoped authorization, browser API clients | API management membutuhkan session; bukan API menu publik anonim |
-| Menu | Backend mutation/read dan bounded management API | UI management Menu belum dinyatakan selesai |
-| Meja | Backend validasi/read/mutation dasar | UI meja dan alur signed QR belum dinyatakan selesai |
-| Order | Domain create/status dasar, snapshot dan transaction handling pada jalur existing | Endpoint publik idempoten, QR context, tracking, dan UI penerimaan belum dinyatakan selesai |
+| Menu | Backend mutation/read, bounded management API, dan **UI Management Menu selesai** | Mutation nyata pada deployment serta E2E masih diperlukan |
+| Meja | Backend validasi/read/mutation dasar dan **UI Meja selesai** | Alur signed QR pada deployment tetap perlu diuji |
+| Kasir & struk | **Kasir Direct Walk-in POS selesai** dan **Cetak Struk Termal selesai** | Integrasi payment gateway dan printer ESC/POS pihak ketiga belum tersedia |
+| Order | Domain create/status dasar, snapshot dan transaction handling pada jalur existing | Endpoint publik idempoten, QR context, tracking, dan UI penerimaan pesanan belum dinyatakan selesai |
 | Demo | Landing/menu/cart/checkout/operasional demonstrasi | State lokal/localStorage bukan alur order produksi |
 
-Dengan demikian, fondasi existing digunakan kembali, tetapi fitur publik tidak boleh dianggap selesai hanya karena backend staff atau demo telah tersedia.
+Keempat area tersebut (UI Menu, UI Meja, POS walk-in, cetak struk termal) telah selesai dengan **169 unit test lulus**. Fitur publik QR-order dan deployment tidak boleh dianggap selesai hanya karena backend staff atau demo telah tersedia.
 
 ## 4. Fitur di Luar Syarat Rilis Awal
 
-Berikut bukan blocker UAS, dan tidak diklaim sebagai fitur produksi tersedia:
+Berikut bukan blocker UTS Pemrograman Website, dan tidak diklaim sebagai fitur produksi tersedia:
 
 - Payment gateway/QRIS, webhook settlement, split bill, multi-payment, refund finansial, dan shift kasir lengkap.
 - Pajak, service, discount approval, dan billing kompleks. Total dasar rilis awal mengikuti kontrak pricing yang tersedia dan dijelaskan secara jujur.
@@ -239,15 +252,11 @@ Final path dan bentuk DTO ditinjau terhadap repository sebelum BUILD. Error meng
 
 ### Langkah
 
+Siapkan environment mengikuti contoh/validator repository, lalu:
+
 ```powershell
 pnpm install --frozen-lockfile
-pnpm exec prisma generate
-```
-
-Siapkan environment mengikuti contoh/validator repository. Pada database baru yang memang disiapkan untuk aplikasi, terapkan migration existing secara terkontrol:
-
-```powershell
-pnpm exec prisma migrate deploy
+npx prisma db push
 pnpm dev
 ```
 
@@ -255,7 +264,7 @@ Buka `http://localhost:3000`, login, dan buka dashboard.
 
 Bootstrap tenant/outlet/admin mengikuti script actual repository. Periksa parameter terlebih dahulu. Jangan mengulang bootstrap pada database berisi akun hanya untuk memperbaiki login.
 
-> Jangan menggunakan `db push`, `migrate reset`, atau seed ulang sebagai recovery umum. Migration, bootstrap, dan mutation nyata harus menggunakan target database yang diketahui dan persetujuan yang jelas.
+> `npx prisma db push` dipakai untuk setup database lokal baru. Untuk production/deployment, jalankan migration sebagai release operation yang terkontrol dengan `pnpm exec prisma migrate deploy`. Jangan menggunakan `migrate reset` atau seed ulang sebagai recovery umum; target database harus diketahui dan disetujui.
 
 ## 10. Environment dan Secrets
 
@@ -281,7 +290,7 @@ Verification dasar:
 ```powershell
 pnpm run typecheck
 pnpm run lint
-pnpm test
+pnpm vitest run
 pnpm run test:coverage
 pnpm run build
 ```
@@ -342,7 +351,7 @@ Pilih satu jalur hosting Next.js dan PostgreSQL yang kompatibel, misalnya Vercel
 
 Deployment demo akademik bukan sertifikasi kesiapan finansial/operasional restoran penuh.
 
-## 13. Skenario Demonstrasi UAS
+## 13. Skenario Demonstrasi UTS Pemrograman Website
 
 1. Pengelola login dan memilih outlet.
 2. Pengelola menunjukkan kategori, Menu, dan meja demo.
