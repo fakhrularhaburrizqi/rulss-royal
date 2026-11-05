@@ -26,9 +26,9 @@ describe("KDS Status Helpers", () => {
   });
 
   it("provides correct wait tone classes based on duration", () => {
-    expect(waitToneClass(5)).toBe("text-emerald-900");
-    expect(waitToneClass(12)).toBe("text-amber-700");
-    expect(waitToneClass(25)).toBe("text-red-700");
+    expect(waitToneClass(5)).toBe("text-zinc-100");
+    expect(waitToneClass(12)).toBe("text-amber-400");
+    expect(waitToneClass(25)).toBe("text-red-400");
   });
 
   it("formats wait time correctly", () => {
