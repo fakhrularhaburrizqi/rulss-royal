@@ -79,8 +79,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
-        token.userId = user.id;
-        token.tenantId = user.tenantId;
+        token.userId = user.id ?? "";
+        token.tenantId = user.tenantId ?? "";
         token.activeOutletId = user.activeOutletId ?? null;
       }
       return token;

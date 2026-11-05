@@ -12,7 +12,14 @@ type DashboardNavigationProps = {
   currentPath?: string;
 };
 
-const READY_ROUTES = new Set(["/dashboard/kategori", "/dashboard/menu", "/dashboard/meja", "/dashboard/pesanan", "/dashboard/kasir"]);
+const READY_ROUTES = new Set([
+  "/dashboard/kategori",
+  "/dashboard/menu",
+  "/dashboard/meja",
+  "/dashboard/pesanan",
+  "/dashboard/kasir",
+  "/dashboard/kds",
+]);
 
 export function DashboardNavigation({ resolution, currentPath }: DashboardNavigationProps) {
   const pathname = usePathname();
@@ -25,6 +32,7 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
     { href: "/dashboard/meja", label: "Meja", requiredPermission: "canViewTables", isAvailable: false },
     { href: "/dashboard/pesanan", label: "Pesanan", requiredPermission: "canViewOrders", isAvailable: false },
     { href: "/dashboard/kasir", label: "Kasir", requiredPermission: "canViewOrders", isAvailable: false },
+    { href: "/dashboard/kds", label: "KDS Dapur", requiredPermission: "canViewOrders", isAvailable: false },
   ];
 
   const filteredItems = navItems.map((item) => {
