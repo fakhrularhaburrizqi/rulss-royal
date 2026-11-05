@@ -334,10 +334,10 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
       )}
 
       {visibleOrders.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 px-6 py-16 text-center">
-          <Utensils className="mx-auto h-12 w-12 text-zinc-600" aria-hidden="true" />
-          <p className="mt-4 text-lg font-semibold text-zinc-300">
-            Belum Ada Pesanan
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-12 text-center">
+          <Utensils className="mx-auto h-12 w-12 text-zinc-500" aria-hidden="true" />
+          <p className="mt-4 text-lg font-semibold text-zinc-200">
+            Belum ada pesanan masuk
           </p>
           <p className="mt-1 text-sm text-zinc-500">
             Pesanan baru akan langsung muncul di sini tanpa perlu memuat ulang halaman.
