@@ -243,21 +243,21 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
 
   return (
     <section aria-label="Papan pesanan dapur" className="space-y-4">
-      <div className="rounded-xl border-2 border-zinc-800 bg-zinc-950 p-4 sm:p-5">
+      <div className="rounded-xl border-2 border-emerald-800/80 bg-emerald-950/90 p-4 sm:p-5 shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black text-white">KDS Dapur</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm font-semibold text-zinc-400">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm font-semibold text-emerald-400">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
               {outletName} · pembaruan otomatis tiap {POLL_INTERVAL_MS / 1000} detik
-              {isFetching && <span className="text-zinc-500">· memperbarui...</span>}
+              {isFetching && <span className="text-emerald-300">· memperbarui...</span>}
             </p>
           </div>
           <button
             type="button"
             onClick={toggleSound}
             aria-pressed={soundOn}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm font-bold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-emerald-500 bg-emerald-700 px-3 text-sm font-bold text-white transition-colors hover:border-emerald-400 hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950"
           >
             {soundOn ? (
               <Volume2 className="h-4 w-4" aria-hidden="true" />
@@ -281,16 +281,16 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setFilter(entry.id)}
-                className={`min-h-11 rounded-md border px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 ${
+                className={`min-h-11 rounded-md border px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950 ${
                   isActive
-                    ? "border-white bg-white text-zinc-950"
-                    : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:text-white"
+                    ? "border-emerald-400 bg-emerald-600 text-white"
+                    : "border-emerald-800/60 bg-emerald-900/60 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-800 hover:text-white"
                 }`}
               >
                 {entry.label}
                 <span
                   className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${
-                    isActive ? "bg-zinc-950 text-white" : "bg-zinc-800 text-zinc-300"
+                    isActive ? "bg-emerald-950 text-white" : "bg-emerald-800 text-emerald-300"
                   }`}
                 >
                   {counts[entry.id]}
@@ -334,11 +334,11 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
       )}
 
       {visibleOrders.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-14 text-center">
-          <p className="text-lg font-bold text-zinc-100">
+        <div className="rounded-xl border-2 border-dashed border-emerald-800/60 bg-emerald-950/40 px-6 py-14 text-center shadow-2xl">
+          <p className="text-lg font-bold text-emerald-100">
             {filter === "semua" ? "Belum ada pesanan masuk" : "Tidak ada pesanan pada tab ini"}
           </p>
-          <p className="mt-2 text-sm font-semibold text-zinc-400">
+          <p className="mt-2 text-sm font-semibold text-emerald-300">
             Pesanan baru akan langsung muncul di sini tanpa perlu memuat ulang halaman.
           </p>
         </div>

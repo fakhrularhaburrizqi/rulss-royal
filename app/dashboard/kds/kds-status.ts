@@ -14,40 +14,40 @@ export type KdsStatusMeta = {
 export const KDS_STATUS_META: Record<OrderStatus, KdsStatusMeta> = {
   [OrderStatus.RECEIVED]: {
     label: "Menunggu",
-    bandClass: "bg-amber-300 text-zinc-950",
-    badgeClass: "bg-zinc-950 text-white",
+    bandClass: "bg-emerald-600 text-white",
+    badgeClass: "bg-emerald-500 text-white",
     actionLabel: "Proses Sekarang",
-    actionClass: "bg-sky-400 text-zinc-950 hover:bg-sky-500",
+    actionClass: "bg-emerald-700 text-white border-emerald-500 hover:bg-emerald-600 hover:border-emerald-400",
     nextStatus: OrderStatus.PREPARING,
   },
   [OrderStatus.PREPARING]: {
     label: "Diproses",
-    bandClass: "bg-sky-300 text-zinc-950",
-    badgeClass: "bg-zinc-950 text-white",
+    bandClass: "bg-emerald-600 text-white",
+    badgeClass: "bg-emerald-500 text-white",
     actionLabel: "Tandai Siap",
-    actionClass: "bg-emerald-400 text-zinc-950 hover:bg-emerald-500",
+    actionClass: "bg-emerald-700 text-white border-emerald-500 hover:bg-emerald-600 hover:border-emerald-400",
     nextStatus: OrderStatus.READY,
   },
   [OrderStatus.READY]: {
     label: "Siap Disajikan",
-    bandClass: "bg-emerald-300 text-zinc-950",
-    badgeClass: "bg-zinc-950 text-white",
+    bandClass: "bg-emerald-600 text-white",
+    badgeClass: "bg-emerald-500 text-white",
     actionLabel: "Selesaikan",
-    actionClass: "bg-zinc-950 text-white hover:bg-zinc-800",
+    actionClass: "bg-emerald-700 text-white border-emerald-500 hover:bg-emerald-600 hover:border-emerald-400",
     nextStatus: OrderStatus.COMPLETED,
   },
   [OrderStatus.COMPLETED]: {
     label: "Selesai",
-    bandClass: "bg-zinc-200 text-zinc-700",
-    badgeClass: "bg-zinc-700 text-white",
+    bandClass: "bg-emerald-700 text-emerald-300",
+    badgeClass: "bg-emerald-800 text-emerald-200",
     actionLabel: "",
     actionClass: "",
     nextStatus: null,
   },
   [OrderStatus.CANCELLED]: {
     label: "Dibatalkan",
-    bandClass: "bg-red-200 text-red-900",
-    badgeClass: "bg-red-700 text-white",
+    bandClass: "bg-red-600 text-white",
+    badgeClass: "bg-red-500 text-white",
     actionLabel: "",
     actionClass: "",
     nextStatus: null,
@@ -83,7 +83,7 @@ export function waitMinutesSince(createdAt: string, now: number): number {
 export function waitToneClass(minutes: number): string {
   if (minutes >= 20) return "text-red-700";
   if (minutes >= 10) return "text-amber-700";
-  return "text-zinc-950";
+  return "text-emerald-900";
 }
 
 export function formatWait(minutes: number): string {
