@@ -243,21 +243,21 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
 
   return (
     <section aria-label="Papan pesanan dapur" className="space-y-4">
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 sm:p-5">
+      <div className="rounded-xl border border-emerald-700/50 bg-emerald-900 p-4 sm:p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-zinc-100">KDS Dapur</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm font-semibold text-zinc-400">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" aria-hidden="true" />
+            <h1 className="text-2xl font-black text-white">KDS Dapur</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm font-semibold text-emerald-100">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-300 border border-white" aria-hidden="true" />
               {outletName} · pembaruan otomatis tiap {POLL_INTERVAL_MS / 1000} detik
-              {isFetching && <span className="text-zinc-400">· memperbarui...</span>}
+              {isFetching && <span className="text-emerald-200">· memperbarui...</span>}
             </p>
           </div>
           <button
             type="button"
             onClick={toggleSound}
             aria-pressed={soundOn}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm font-bold text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-emerald-700/60 bg-emerald-950/60 px-3 text-sm font-bold text-emerald-50 transition-colors hover:border-emerald-500 hover:bg-emerald-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900"
           >
             {soundOn ? (
               <Volume2 className="h-4 w-4" aria-hidden="true" />
@@ -281,16 +281,16 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setFilter(entry.id)}
-                className={`min-h-10 rounded-full border px-3 py-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 ${
+                className={`min-h-10 rounded-full border px-3 py-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 ${
                   isActive
-                    ? "border-emerald-600 bg-emerald-600 text-white"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100"
+                    ? "border-white bg-white text-emerald-950 font-bold"
+                    : "border-emerald-700/60 bg-emerald-950/50 text-emerald-100 hover:bg-emerald-800 hover:text-white"
                 }`}
               >
                 {entry.label}
                 <span
-                  className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${
-                    isActive ? "bg-zinc-900 text-white" : "bg-zinc-800/50 text-zinc-400"
+                  className={`ml-2 rounded-full px-1.5 py-0.5 text-xs font-bold ${
+                    isActive ? "bg-emerald-100 text-emerald-950" : "bg-emerald-950/80 text-emerald-200"
                   }`}
                 >
                   {counts[entry.id]}
