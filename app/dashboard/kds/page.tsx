@@ -31,9 +31,9 @@ export default async function KdsPage({
         currentPath="/dashboard/kds"
         wide
       >
-        <div className="rounded-lg border border-emerald-900/10 bg-white p-6 text-center">
-          <h2 className="text-lg font-semibold text-emerald-950">KDS Dapur</h2>
-          <p className="mt-2 text-sm text-emerald-700">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-12 text-center">
+          <h2 className="text-lg font-semibold text-zinc-200">KDS Dapur</h2>
+          <p className="mt-2 text-sm text-zinc-500">
             {resolution?.kind !== "selected"
               ? "Pilih outlet terlebih dahulu untuk melihat antrean dapur."
               : "Anda tidak memiliki izin untuk melihat pesanan di outlet ini."}

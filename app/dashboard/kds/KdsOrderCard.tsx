@@ -19,8 +19,8 @@ export function KdsOrderCard({ order, now, isPending, onAdvance }: KdsOrderCardP
   const canAdvance = meta.nextStatus !== null;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-lg">
-      <header className={`flex items-start justify-between gap-3 px-4 py-3 ${meta.bandClass}`}>
+    <article className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+      <header className="flex items-start justify-between gap-3 px-4 py-3 border-b border-zinc-800 bg-zinc-900/40">
         <div className="min-w-0">
           <p className="truncate text-3xl font-black text-zinc-100 leading-none">{tableLabel}</p>
           <p className="mt-1.5 truncate text-sm font-semibold text-zinc-300">

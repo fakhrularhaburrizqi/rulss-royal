@@ -115,8 +115,15 @@ export function OrderTable({ outletId, initialOrders }: OrderTableProps) {
           <TableBody>
             {orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-emerald-600">
-                  Belum ada pesanan masuk.
+                <TableCell colSpan={7} className="p-0 border-none">
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center my-6">
+                    <p className="text-zinc-200 font-semibold text-lg">
+                      Belum ada pesanan masuk
+                    </p>
+                    <p className="mt-1 text-zinc-500 text-sm">
+                      Pesanan baru akan muncul di sini.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
