@@ -10,6 +10,7 @@ import { TableCreateDialog } from "./TableCreateDialog";
 import { TableEditDialog } from "./TableEditDialog";
 import { TableQrDialog } from "./TableQrDialog";
 import { QrCode, Download, Printer, LayoutGrid, Table as TableIcon, Plus, CheckCircle, XCircle } from "lucide-react";
+import { getTableQrUrl } from "./table-qr-helper";
 
 interface DiningTableTableProps {
   authScope: DiningTableAuthScope;
@@ -45,8 +46,7 @@ export function DiningTableTable({
   const qrTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const handleDownloadPng = async (table: DiningTableSummary) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const qrUrl = `${origin}/menu?table=${table.code}`;
+    const qrUrl = getTableQrUrl(table);
     const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}&format=png`;
     try {
       const response = await fetch(apiUrl);
@@ -74,10 +74,10 @@ export function DiningTableTable({
     <div className="space-y-6">
       {/* Non-print Screen UI */}
       <div className="print:hidden space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-800/50 bg-emerald-900 p-5 shadow-lg">
           <div>
-            <h2 className="text-2xl font-bold font-mono tracking-wider text-white">Manajemen Meja &amp; QR Code</h2>
-            <p className="mt-1 font-mono text-xs text-emerald-100 tracking-wide">
+            <h2 className="font-mono text-2xl font-bold text-white tracking-wider">Manajemen Meja &amp; QR Code</h2>
+            <p className="mt-1 font-mono text-xs text-emerald-100/90 tracking-wide">
               Kelola daftar meja, kapasitas, dan unduh/cetak QR Code untuk pemesanan pelanggan.
             </p>
           </div>
@@ -85,19 +85,19 @@ export function DiningTableTable({
             <Button
               type="button"
               onClick={handlePrintAll}
-              className="inline-flex items-center gap-2 rounded-md border border-emerald-700/60 bg-emerald-800 hover:bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors cursor-pointer border-0"
             >
               <Printer className="h-4 w-4" />
               Cetak Semua QR Code
             </Button>
-            <div className="flex rounded-md border border-zinc-800 bg-zinc-900 p-1">
+            <div className="flex rounded-md border border-emerald-700/50 bg-emerald-950/60 p-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setViewMode("grid")}
                 className={`h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer ${
-                  viewMode === "grid" ? "bg-emerald-600 text-white" : "text-zinc-400 hover:text-white"
+                  viewMode === "grid" ? "bg-white text-emerald-950 font-bold" : "text-emerald-100 hover:text-white"
                 }`}
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
@@ -109,7 +109,7 @@ export function DiningTableTable({
                 size="sm"
                 onClick={() => setViewMode("table")}
                 className={`h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer ${
-                  viewMode === "table" ? "bg-emerald-600 text-white" : "text-zinc-400 hover:text-white"
+                  viewMode === "table" ? "bg-white text-emerald-950 font-bold" : "text-emerald-100 hover:text-white"
                 }`}
               >
                 <TableIcon className="h-3.5 w-3.5" />
@@ -120,7 +120,7 @@ export function DiningTableTable({
               <Button
                 ref={createTriggerRef}
                 onClick={() => setIsCreateOpen(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium cursor-pointer border-0"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
                 Tambah Meja
@@ -150,8 +150,7 @@ export function DiningTableTable({
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {tables.map((table) => {
-              const origin = typeof window !== "undefined" ? window.location.origin : "";
-              const qrUrl = `${origin}/menu?table=${table.code}`;
+              const qrUrl = getTableQrUrl(table);
               const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
               return (
                 <div
@@ -191,7 +190,7 @@ export function DiningTableTable({
                     <Button
                       type="button"
                       onClick={() => handleDownloadPng(table)}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold gap-1.5 cursor-pointer border-0"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Unduh PNG
@@ -268,7 +267,7 @@ export function DiningTableTable({
                                 qrTriggerRefs.current[table.id] = el;
                               }}
                               onClick={() => setQrTable(table)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 px-3 text-xs rounded-md border-0 cursor-pointer"
                             >
                               QR
                             </Button>
@@ -277,7 +276,7 @@ export function DiningTableTable({
                                 editTriggerRefs.current[table.id] = el;
                               }}
                               onClick={() => setEditingTable(table)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 px-3 text-xs rounded-md border-0 cursor-pointer"
                             >
                               Edit
                             </Button>
@@ -297,8 +296,7 @@ export function DiningTableTable({
       <div className="hidden print:block print:bg-white print:text-black print:p-4">
         <div className="grid grid-cols-2 gap-6 print:grid-cols-2 print:gap-4">
           {activeTables.map((table) => {
-            const origin = typeof window !== "undefined" ? window.location.origin : "";
-            const qrUrl = `${origin}/menu?table=${table.code}`;
+            const qrUrl = getTableQrUrl(table);
             const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`;
             return (
               <div

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateTableTokenAction, getTableQrAction } from "@/app/dashboard/table-actions";
 import type { DiningTableSummary } from "@/lib/services/dining-table.service";
+import { getTableQrUrl } from "./table-qr-helper";
 
 interface TableQrDialogProps {
   isOpen: boolean;
@@ -74,7 +75,7 @@ export function TableQrDialog({
 
   const publicUrl = token && typeof window !== "undefined"
     ? `${window.location.origin}/p/${table.id}?token=${token}`
-    : "";
+    : getTableQrUrl(table);
 
   const handleCopy = async () => {
     if (!publicUrl) return;
@@ -96,32 +97,37 @@ export function TableQrDialog({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         onCloseAutoFocus={handleCloseAutoFocus}
-        className="max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 max-w-md w-full text-zinc-100"
       >
         <DialogHeader>
-          <DialogTitle>QR Code Meja: {table.code}</DialogTitle>
-          <DialogDescription>
-            Kelola dan buat kode QR untuk akses pemesanan pelanggan di meja ini.
+          <DialogTitle className="text-white font-mono font-semibold text-lg">
+            QR Code Meja: {table.code}
+          </DialogTitle>
+          <DialogDescription className="text-zinc-400 text-xs font-mono">
+            URL target QR Code untuk akses pemesanan pelanggan di meja ini.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="border-t border-zinc-800 my-4" />
+
+        <div className="space-y-4 py-2">
           {!token ? (
             <div className="space-y-4">
-              <p className="text-sm text-amber-800 font-medium">Menampilkan QR Code</p>
+              <p className="text-sm text-zinc-300">Buat token aman atau gunakan URL langsung untuk meja {table.code}.</p>
 
               {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
+                <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-300" role="alert">
                   {error}
                 </div>
               )}
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
                   disabled={isGenerating}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
                 >
                   Batal
                 </Button>
@@ -129,41 +135,41 @@ export function TableQrDialog({
                   type="button"
                   onClick={handleGenerate}
                   disabled={isGenerating}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                 >
-                  {isGenerating ? "Menghasilkan..." : "Buat QR Code"}
+                  {isGenerating ? "Menghasilkan..." : "Buat Token QR"}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-                <div className="bg-white p-3 rounded-lg shadow-sm border">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-center">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-zinc-700">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(publicUrl)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`}
                     alt={`QR Code Meja ${table.code}`}
-                    width={160}
-                    height={160}
+                    width={180}
+                    height={180}
                     className="mx-auto"
                   />
                 </div>
-                <p className="mt-2 text-xs font-semibold text-emerald-950">Meja: {table.code}</p>
+                <p className="mt-3 font-mono text-xs font-bold text-zinc-200">Meja: {table.code}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="qr-url">URL Publik Pelanggan</Label>
+                <Label htmlFor="qr-url" className="text-zinc-300 text-xs font-mono">URL Publik Pelanggan</Label>
                 <div className="flex gap-2">
                   <Input
                     id="qr-url"
                     readOnly
                     value={publicUrl}
-                    className="bg-muted text-xs"
+                    className="bg-zinc-950 border-zinc-800 text-zinc-200 font-mono text-xs"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleCopy}
-                    className="shrink-0"
+                    className="shrink-0 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200 text-xs font-medium"
                   >
                     {copied ? "Tersalin!" : "Copy"}
                   </Button>
@@ -175,7 +181,7 @@ export function TableQrDialog({
                   type="button"
                   variant="outline"
                   onClick={() => window.open(publicUrl, "_blank")}
-                  className="flex-1 text-xs"
+                  className="flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200 text-xs font-medium"
                 >
                   Buka Tautan
                 </Button>
@@ -183,7 +189,7 @@ export function TableQrDialog({
                   type="button"
                   variant="outline"
                   onClick={() => window.print()}
-                  className="flex-1 text-xs"
+                  className="flex-1 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200 text-xs font-medium"
                 >
                   Cetak / Print
                 </Button>
@@ -193,7 +199,7 @@ export function TableQrDialog({
                 <Button
                   type="button"
                   onClick={onClose}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                 >
                   Tutup
                 </Button>
