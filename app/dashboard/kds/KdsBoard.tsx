@@ -246,8 +246,8 @@ function KdsBoardInner({ outletId, outletName, initialOrders }: KdsBoardProps) {
       <div className="rounded-xl border border-emerald-700/50 bg-emerald-900 p-4 sm:p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-white">KDS Dapur</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm font-semibold text-emerald-100">
+            <h1 className="text-2xl font-bold font-mono tracking-wider text-white">KDS Dapur</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-xs text-emerald-100 tracking-wide">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-300 border border-white" aria-hidden="true" />
               {outletName} · pembaruan otomatis tiap {POLL_INTERVAL_MS / 1000} detik
               {isFetching && <span className="text-emerald-200">· memperbarui...</span>}
