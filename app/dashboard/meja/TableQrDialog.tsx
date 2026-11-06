@@ -24,7 +24,7 @@ export function TableQrDialog({
   table,
   triggerRef,
 }: TableQrDialogProps) {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(table.qrToken ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -39,17 +39,17 @@ export function TableQrDialog({
           if (res?.ok && res.data?.token) {
             setToken(res.data.token);
           } else {
-            setToken(null);
+            setToken(table.qrToken ?? null);
           }
         })
         .catch(() => {
-          setToken(null);
+          setToken(table.qrToken ?? null);
         })
         .finally(() => {
           setIsGenerating(false);
         });
     }
-  }, [isOpen, table.id, outletId]);
+  }, [isOpen, table.id, outletId, table.qrToken]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -73,9 +73,7 @@ export function TableQrDialog({
     }
   };
 
-  const publicUrl = token && typeof window !== "undefined"
-    ? `${window.location.origin}/p/${table.id}?token=${token}`
-    : getTableQrUrl(table);
+  const publicUrl = getTableQrUrl(table, token);
 
   const handleCopy = async () => {
     if (!publicUrl) return;

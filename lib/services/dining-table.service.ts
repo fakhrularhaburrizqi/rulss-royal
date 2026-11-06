@@ -21,6 +21,8 @@ export type DiningTableSummary = {
   capacity: number;
   isActive: boolean;
   updatedAt: string;
+  qrToken?: string | null;
+  outletId?: string;
 };
 
 const TRANSACTION_OPTIONS = { maxWait: 5000, timeout: 15000 } as const;
@@ -40,6 +42,8 @@ const MANAGEMENT_TABLE_SELECT = {
   capacity: true,
   isActive: true,
   updatedAt: true,
+  qrToken: true,
+  outletId: true,
 } as const;
 
 async function assertTableCodeAvailable(
@@ -93,6 +97,8 @@ export async function listTablesForManagement(outletId: string): Promise<DiningT
       capacity: row.capacity,
       isActive: row.isActive,
       updatedAt: row.updatedAt.toISOString(),
+      qrToken: row.qrToken,
+      outletId: row.outletId,
     }));
   } catch (error) {
     throw toOrderError(error);
