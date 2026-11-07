@@ -5,6 +5,7 @@ export type OrderErrorCode =
   | "INVALID_INPUT"
   | "AMOUNT_OUT_OF_RANGE"
   | "MENU_ITEM_UNAVAILABLE"
+  | "MENU_STOCK_INSUFFICIENT"
   | "TABLE_REQUIRED"
   | "TABLE_NOT_FOUND"
   | "TABLE_CODE_CONFLICT"
@@ -32,6 +33,7 @@ const ORDER_ERROR_MESSAGES: Readonly<Record<OrderErrorCode, string>> = {
   INVALID_INPUT: "Data yang dikirim tidak valid.",
   AMOUNT_OUT_OF_RANGE: "Nilai nominal melewati batas yang diizinkan.",
   MENU_ITEM_UNAVAILABLE: "Salah satu menu tidak tersedia.",
+  MENU_STOCK_INSUFFICIENT: "Stok menu tidak mencukupi.",
   TABLE_REQUIRED: "Nomor meja wajib diisi untuk pesanan ini.",
   TABLE_NOT_FOUND: "Meja tidak ditemukan.",
   TABLE_CODE_CONFLICT: "Kode meja sudah digunakan di outlet ini.",
@@ -61,8 +63,8 @@ export function getOrderErrorMessage(code: OrderErrorCode): string {
 export class OrderDomainError extends Error {
   readonly code: OrderErrorCode;
 
-  constructor(code: OrderErrorCode) {
-    super(getOrderErrorMessage(code));
+  constructor(code: OrderErrorCode, message?: string) {
+    super(message ?? getOrderErrorMessage(code));
     this.name = "OrderDomainError";
     this.code = code;
     Object.setPrototypeOf(this, OrderDomainError.prototype);

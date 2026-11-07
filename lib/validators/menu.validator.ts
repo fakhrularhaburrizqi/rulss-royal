@@ -6,6 +6,7 @@ import {
   MAX_IMAGE_URL,
   MAX_MENU_DESCRIPTION,
   MAX_MENU_NAME,
+  MAX_MENU_STOCK,
   MAX_MONEY,
   MAX_SORT_ORDER,
   MIN_MONEY,
@@ -42,6 +43,13 @@ const priceSchema = z
   .int("Harga harus bilangan bulat")
   .min(MIN_MONEY, "Harga tidak boleh negatif")
   .max(MAX_MONEY, "Harga melewati batas yang diizinkan");
+
+const stockSchema = z
+  .coerce
+  .number()
+  .int("Stok harus bilangan bulat")
+  .min(0, "Stok tidak boleh negatif")
+  .max(MAX_MENU_STOCK, `Stok maksimal ${MAX_MENU_STOCK}`);
 
 const descriptionSchema = z
   .string()
@@ -138,6 +146,7 @@ export const menuItemCreateSchema = z
     sortOrder: sortOrderSchema.optional(),
     isActive: z.boolean().optional(),
     isSoldOut: z.boolean().optional(),
+    stock: stockSchema.optional(),
   })
   .strict();
 
@@ -155,6 +164,7 @@ export const menuItemUpdateSchema = z
     sortOrder: sortOrderSchema.optional(),
     isActive: z.boolean().optional(),
     isSoldOut: z.boolean().optional(),
+    stock: stockSchema.optional(),
   })
   .strict()
   .refine(
@@ -167,7 +177,8 @@ export const menuItemUpdateSchema = z
       data.imageAlt !== undefined ||
       data.sortOrder !== undefined ||
       data.isActive !== undefined ||
-      data.isSoldOut !== undefined,
+      data.isSoldOut !== undefined ||
+      data.stock !== undefined,
     { message: "Minimal satu field menu harus diperbarui" }
   );
 

@@ -7,6 +7,7 @@ import type { ActiveMenuCategory, OrderableMenuItem } from "@/lib/services/menu.
 import type { OrderReceiptData } from "@/lib/services/order-receipt.service";
 import { createDirectOrderAction } from "@/app/dashboard/order-actions";
 import { openReceiptPrintWindow } from "@/lib/order/receipt";
+import { isMenuItemSoldOut } from "@/lib/utils/menu-availability";
 
 interface KasirDirectClientProps {
   outletId: string;
@@ -81,8 +82,13 @@ export function KasirDirectClient({
   const formatRupiah = (value: number) =>
     `Rp${value.toLocaleString("id-ID")}`;
 
-  const handleAdd = (itemId: string) => {
-    setCart((prev) => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + 1 }));
+  const handleAdd = (item: OrderableMenuItem) => {
+    if (isMenuItemSoldOut(item)) return;
+    setCart((prev) => {
+      const current = prev[item.id] ?? 0;
+      if (current >= item.stock) return prev;
+      return { ...prev, [item.id]: current + 1 };
+    });
   };
 
   const handleDecrease = (itemId: string) => {
@@ -238,24 +244,39 @@ export function KasirDirectClient({
                   <ul className="grid gap-2 sm:grid-cols-2">
                     {items.map((item) => {
                       const qty = cart[item.id] ?? 0;
+                      const unavailable = isMenuItemSoldOut(item);
+                      const reachedStockLimit = qty >= item.stock;
                       return (
                         <li
                           key={item.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-emerald-900/10 bg-white p-3 shadow-sm"
+                          className={`flex items-center justify-between gap-3 rounded-lg border border-emerald-900/10 bg-white p-3 shadow-sm ${
+                            unavailable ? "opacity-50 pointer-events-none" : ""
+                          }`}
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-emerald-950">
-                              {item.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-emerald-950">
+                                {item.name}
+                              </p>
+                              {unavailable && (
+                                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                                  Habis
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm font-bold text-emerald-700">
                               {formatRupiah(item.price)}
+                            </p>
+                            <p className="text-xs text-emerald-700">
+                              Stok: {item.stock}
                             </p>
                           </div>
                           {qty === 0 ? (
                             <button
                               type="button"
-                              onClick={() => handleAdd(item.id)}
-                              className={actionButtonClass}
+                              onClick={() => handleAdd(item)}
+                              disabled={unavailable || reachedStockLimit}
+                              className={`${actionButtonClass} disabled:cursor-not-allowed disabled:bg-gray-400`}
                             >
                               Tambah
                             </button>
@@ -274,9 +295,10 @@ export function KasirDirectClient({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleAdd(item.id)}
+                                onClick={() => handleAdd(item)}
                                 aria-label={`Tambah ${item.name}`}
-                                className={actionButtonClass}
+                                disabled={unavailable || reachedStockLimit}
+                                className={`${actionButtonClass} disabled:cursor-not-allowed disabled:bg-gray-400`}
                               >
                                 +
                               </button>
@@ -328,9 +350,10 @@ export function KasirDirectClient({
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleAdd(item.id)}
+                      onClick={() => handleAdd(item)}
                       aria-label={`Tambah jumlah ${item.name}`}
-                      className={actionButtonClass}
+                      disabled={isMenuItemSoldOut(item) || quantity >= item.stock}
+                      className={`${actionButtonClass} disabled:cursor-not-allowed disabled:bg-gray-400`}
                     >
                       +
                     </button>

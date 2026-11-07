@@ -95,7 +95,7 @@ async function loadOrderLines(
       isSoldOut: false,
       category: { isActive: true, deletedAt: null },
     },
-    select: { id: true, name: true, price: true },
+    select: { id: true, name: true, price: true, stock: true },
   });
 
   if (menuRows.length !== menuItemIds.length) {
@@ -110,6 +110,12 @@ async function loadOrderLines(
     if (!menu) {
       throw new OrderDomainError("MENU_ITEM_UNAVAILABLE");
     }
+    if (menu.stock < item.quantity) {
+      throw new OrderDomainError(
+        "MENU_STOCK_INSUFFICIENT",
+        `Stok ${menu.name} tidak mencukupi.`
+      );
+    }
     lines.push({
       menuItemId: menu.id,
       menuNameSnapshot: menu.name,
@@ -121,6 +127,31 @@ async function loadOrderLines(
   }
 
   return lines;
+}
+
+async function reserveStock(
+  tx: Prisma.TransactionClient,
+  plan: CreateOrderPlan,
+  lines: readonly OrderLine[]
+): Promise<void> {
+  for (const line of lines) {
+    const reserved = await tx.menuItem.updateMany({
+      where: {
+        id: line.menuItemId,
+        tenantId: plan.context.actor.tenantId,
+        outletId: plan.context.outletId,
+        stock: { gte: line.quantity },
+      },
+      data: { stock: { decrement: line.quantity } },
+    });
+
+    if (reserved.count !== 1) {
+      throw new OrderDomainError(
+        "MENU_STOCK_INSUFFICIENT",
+        `Stok ${line.menuNameSnapshot} tidak mencukupi.`
+      );
+    }
+  }
 }
 
 async function assertDiningTable(
@@ -255,6 +286,7 @@ async function persistOrder(
 async function executeCreateOrder(plan: CreateOrderPlan): Promise<CreatedOrderSummary> {
   return db.$transaction(async (tx) => {
     const lines = await loadOrderLines(tx, plan);
+    await reserveStock(tx, plan, lines);
     await assertDiningTable(tx, plan);
     const orderNumber = await nextOrderNumber(tx, plan);
     return persistOrder(tx, plan, lines, orderNumber);

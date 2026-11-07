@@ -13,6 +13,7 @@ const VALID_ITEM = {
   sortOrder: 1,
   isActive: true,
   isSoldOut: true,
+  stock: 0,
   deletedAt: null,
   updatedAt: "2026-03-10T08:30:00.000Z",
   category: {

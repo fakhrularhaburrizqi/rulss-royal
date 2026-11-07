@@ -57,6 +57,7 @@ export function MenuCreateDialog({
       sortOrder: 0,
       isActive: true,
       isSoldOut: false,
+      stock: 0,
     },
   });
 
@@ -74,6 +75,7 @@ export function MenuCreateDialog({
         sortOrder: 0,
         isActive: true,
         isSoldOut: false,
+        stock: 0,
       });
       setDomainError(null);
       setIsSubmitting(false);
@@ -240,6 +242,33 @@ export function MenuCreateDialog({
               {form.formState.errors.price && (
                 <p id="price-error" className="text-sm text-red-600" role="alert">
                   {form.formState.errors.price.message}
+                </p>
+              )}
+            </div>
+
+            {/* Stock */}
+            <div className="space-y-2">
+              <Label htmlFor="stock">Stok Tersedia</Label>
+              <Input
+                id="stock"
+                type="number"
+                min={0}
+                max={999999}
+                step={1}
+                {...form.register("stock", {
+                  setValueAs: (v) => (v === "" ? 0 : Number(v)),
+                })}
+                placeholder="0"
+                disabled={isSubmitting}
+                aria-invalid={form.formState.errors.stock ? "true" : "false"}
+                aria-describedby={form.formState.errors.stock ? "stock-error" : "stock-hint"}
+              />
+              <p id="stock-hint" className="text-xs text-emerald-700">
+                Menu dengan stok 0 otomatis berstatus habis.
+              </p>
+              {form.formState.errors.stock && (
+                <p id="stock-error" className="text-sm text-red-600" role="alert">
+                  {form.formState.errors.stock.message}
                 </p>
               )}
             </div>

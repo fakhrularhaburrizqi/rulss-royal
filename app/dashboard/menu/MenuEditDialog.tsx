@@ -20,7 +20,15 @@ interface MenuEditDialogProps {
   onClose: () => void;
   outletId: string;
   authScope: MenuItemAuthScope;
-  menuItem: ManagementMenuItemListItem | MenuItemSummary & { description?: string | null; imageUrl?: string | null; imageAlt?: string | null; sortOrder?: number };
+  menuItem:
+    | ManagementMenuItemListItem
+    | (MenuItemSummary & {
+        description?: string | null;
+        imageUrl?: string | null;
+        imageAlt?: string | null;
+        sortOrder?: number;
+        stock?: number;
+      });
   triggerRef?: React.RefObject<HTMLButtonElement | null>;
   onSuccess?: (data: MenuItemSummary) => void;
 }
@@ -62,6 +70,7 @@ export function MenuEditDialog({
       sortOrder: menuItem?.sortOrder ?? 0,
       isActive: menuItem?.isActive ?? true,
       isSoldOut: menuItem?.isSoldOut ?? false,
+      stock: menuItem?.stock ?? 0,
     },
   });
 
@@ -81,6 +90,7 @@ export function MenuEditDialog({
         sortOrder: menuItem.sortOrder ?? 0,
         isActive: menuItem.isActive,
         isSoldOut: menuItem.isSoldOut,
+        stock: menuItem.stock ?? 0,
       });
       setDomainError(null);
       setIsSubmitting(false);
@@ -257,6 +267,33 @@ export function MenuEditDialog({
               {form.formState.errors.price && (
                 <p id="edit-price-error" className="text-sm text-red-600" role="alert">
                   {form.formState.errors.price.message}
+                </p>
+              )}
+            </div>
+
+            {/* Stock */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-stock">Stok Tersedia</Label>
+              <Input
+                id="edit-stock"
+                type="number"
+                min={0}
+                max={999999}
+                step={1}
+                {...form.register("stock", {
+                  setValueAs: (v) => (v === "" ? 0 : Number(v)),
+                })}
+                placeholder="0"
+                disabled={isSubmitting}
+                aria-invalid={form.formState.errors.stock ? "true" : "false"}
+                aria-describedby={form.formState.errors.stock ? "edit-stock-error" : "edit-stock-hint"}
+              />
+              <p id="edit-stock-hint" className="text-xs text-emerald-700">
+                Menu dengan stok 0 otomatis berstatus habis.
+              </p>
+              {form.formState.errors.stock && (
+                <p id="edit-stock-error" className="text-sm text-red-600" role="alert">
+                  {form.formState.errors.stock.message}
                 </p>
               )}
             </div>

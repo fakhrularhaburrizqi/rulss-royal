@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useMenuItemsQuery } from "./useMenuItemsQuery";
 import { MenuCreateDialog } from "./MenuCreateDialog";
 import { MenuEditDialog } from "./MenuEditDialog";
+import { MenuStockDialog } from "./MenuStockDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,10 @@ export function MenuItemTable({
     initialDataUpdatedAt,
   });
 
-  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit">("closed");
+  const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit" | "stock">("closed");
   const [selectedMenuItem, setSelectedMenuItem] = useState<ManagementMenuItemListItem | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const stockTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const handleOpenCreate = useCallback(() => {
     setDialogMode("create");
@@ -63,6 +65,11 @@ export function MenuItemTable({
   const handleOpenEdit = useCallback((item: ManagementMenuItemListItem) => {
     setSelectedMenuItem(item);
     setDialogMode("edit");
+  }, []);
+
+  const handleOpenStock = useCallback((item: ManagementMenuItemListItem) => {
+    setSelectedMenuItem(item);
+    setDialogMode("stock");
   }, []);
 
   const handleCloseDialog = useCallback(() => {
@@ -78,6 +85,12 @@ export function MenuItemTable({
     return isActive
       ? { label: "Aktif", className: "bg-emerald-100 text-emerald-800" }
       : { label: "Tidak Aktif", className: "bg-gray-100 text-gray-800" };
+  };
+
+  const getStockLabel = (stock: number) => {
+    if (stock <= 0) return "bg-red-100 text-red-800";
+    if (stock <= 5) return "bg-amber-100 text-amber-800";
+    return "bg-emerald-100 text-emerald-800";
   };
 
   const isAuthError = err?.status === 401 || err?.status === 403;
@@ -177,17 +190,18 @@ export function MenuItemTable({
                     <TableHead className="text-emerald-800">Nama</TableHead>
                     <TableHead className="text-emerald-800">Kategori</TableHead>
                     <TableHead className="text-right text-emerald-800">Harga</TableHead>
+                    <TableHead className="text-emerald-800">Stok</TableHead>
                     <TableHead className="text-emerald-800">Status item</TableHead>
                     <TableHead className="text-emerald-800">Sold-out</TableHead>
                     {canManageCatalog && !isAuthError && (
-                      <TableHead className="w-[120px] text-emerald-800">Aksi</TableHead>
+                      <TableHead className="w-[170px] text-emerald-800">Aksi</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={canManageCatalog && !isAuthError ? 6 : 5} className="py-8 text-center text-emerald-600">
+                      <TableCell colSpan={canManageCatalog && !isAuthError ? 7 : 6} className="py-8 text-center text-emerald-600">
                         Tidak ada menu ditemukan
                       </TableCell>
                     </TableRow>
@@ -214,6 +228,13 @@ export function MenuItemTable({
                           </TableCell>
                           <TableCell>
                             <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${getStockLabel(row.stock)}`}
+                            >
+                              {row.stock}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span
                               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.className}`}
                             >
                               {status.label}
@@ -235,13 +256,23 @@ export function MenuItemTable({
                           </TableCell>
                           {canManageCatalog && !isAuthError && (
                             <TableCell>
-                              <Button
-                                onClick={() => handleOpenEdit(row)}
-                                aria-label={`Edit ${row.name}`}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
-                              >
-                                Edit
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  ref={stockTriggerRef}
+                                  onClick={() => handleOpenStock(row)}
+                                  aria-label={`Atur stok ${row.name}`}
+                                  className="bg-amber-500 hover:bg-amber-600 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
+                                >
+                                  Stok
+                                </Button>
+                                <Button
+                                  onClick={() => handleOpenEdit(row)}
+                                  aria-label={`Edit ${row.name}`}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-xs rounded-md border-none cursor-pointer"
+                                >
+                                  Edit
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -292,14 +323,23 @@ export function MenuItemTable({
       />
 
       {selectedMenuItem && (
-        <MenuEditDialog
-          isOpen={dialogMode === "edit"}
-          onClose={handleCloseDialog}
-          outletId={outletId}
-          authScope={authScope}
-          menuItem={selectedMenuItem}
-          triggerRef={triggerRef}
-        />
+        <>
+          <MenuEditDialog
+            isOpen={dialogMode === "edit"}
+            onClose={handleCloseDialog}
+            outletId={outletId}
+            authScope={authScope}
+            menuItem={selectedMenuItem}
+            triggerRef={triggerRef}
+          />
+          <MenuStockDialog
+            isOpen={dialogMode === "stock"}
+            onClose={handleCloseDialog}
+            outletId={outletId}
+            menuItem={selectedMenuItem}
+            triggerRef={stockTriggerRef}
+          />
+        </>
       )}
     </div>
   );

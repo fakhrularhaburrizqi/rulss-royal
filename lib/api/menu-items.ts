@@ -23,6 +23,7 @@ const menuItemSchema = z
     sortOrder: z.number().int(),
     isActive: z.boolean(),
     isSoldOut: z.boolean(),
+    stock: z.number().int().nonnegative(),
     deletedAt: isoDateTimeSchema.nullable(),
     updatedAt: isoDateTimeSchema,
     category: categorySchema,

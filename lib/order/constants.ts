@@ -20,6 +20,8 @@ export const MAX_MENU_NAME = 120;
 
 export const MAX_MENU_DESCRIPTION = 500;
 
+export const MAX_MENU_STOCK = 999_999;
+
 export const MAX_IMAGE_ALT = 120;
 
 export const MAX_IMAGE_URL = 2048;

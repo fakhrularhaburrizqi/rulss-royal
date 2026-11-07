@@ -43,6 +43,7 @@ const mockMenuItem: ManagementMenuItemListItem = {
   sortOrder: 0,
   isActive: true,
   isSoldOut: false,
+  stock: 10,
   deletedAt: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },

@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import Image from "next/image";
 import { CheckCircle2 } from "lucide-react";
 import type { PublicCatalogResult } from "@/lib/services/public-menu.service";
+import { isMenuItemSoldOut } from "@/lib/utils/menu-availability";
 import { createPublicOrderAction } from "./actions";
 
 interface PublicMenuClientProps {
@@ -30,12 +31,16 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
     }).format(price);
   };
 
-  const handleAddToCart = (itemId: string) => {
-    if (orderSuccess) return;
-    setCart((prev) => ({
-      ...prev,
-      [itemId]: (prev[itemId] ?? 0) + 1,
-    }));
+  const handleAddToCart = (item: (typeof menuItems)[number]) => {
+    if (orderSuccess || isMenuItemSoldOut(item)) return;
+    setCart((prev) => {
+      const current = prev[item.id] ?? 0;
+      if (current >= item.stock) return prev;
+      return {
+        ...prev,
+        [item.id]: current + 1,
+      };
+    });
   };
 
   const handleUpdateQuantity = (itemId: string, delta: number) => {
@@ -157,12 +162,19 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
                 <div className="space-y-3">
                   {itemsInCategory.map((item) => {
                     const qtyInCart = cart[item.id] ?? 0;
+                    const unavailable = isMenuItemSoldOut(item);
+                    const reachedStockLimit = qtyInCart >= item.stock;
                     return (
                       <div
                         key={item.id}
-                        onClick={() => !item.isSoldOut && handleAddToCart(item.id)}
+                        onClick={() => {
+                          if (unavailable) return;
+                          handleAddToCart(item);
+                        }}
                         className={`flex justify-between items-start bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all gap-3 ${
-                          item.isSoldOut ? "opacity-60 grayscale cursor-not-allowed" : "cursor-pointer hover:border-emerald-600 dark:hover:border-emerald-500"
+                          unavailable
+                            ? "opacity-50 pointer-events-none cursor-not-allowed"
+                            : "cursor-pointer hover:border-emerald-600 dark:hover:border-emerald-500"
                         }`}
                       >
                         {item.imageUrl ? (
@@ -183,7 +195,7 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
                         <div className="space-y-1 flex-1 pr-3 min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{item.name}</h3>
-                            {item.isSoldOut && (
+                            {unavailable && (
                               <span className="rounded bg-red-100 dark:bg-red-900 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-300">
                                 Habis
                               </span>
@@ -202,18 +214,17 @@ export function PublicMenuClient({ catalog, tableId, token }: PublicMenuClientPr
                               {qtyInCart}
                             </span>
                           )}
-                          {!item.isSoldOut && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToCart(item.id);
-                              }}
-                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
-                            >
-                              + Tambah
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToCart(item);
+                            }}
+                            disabled={unavailable || reachedStockLimit}
+                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:cursor-not-allowed disabled:bg-gray-400"
+                          >
+                            {reachedStockLimit ? "Stok Habis" : "+ Tambah"}
+                          </button>
                         </div>
                       </div>
                     );

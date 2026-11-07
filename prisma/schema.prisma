@@ -242,6 +242,7 @@ model MenuItem {
   imageAlt    String?
   isActive    Boolean   @default(true)
   isSoldOut   Boolean   @default(false)
+  stock       Int       @default(0)
   sortOrder   Int       @default(0)
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())

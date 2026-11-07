@@ -4,7 +4,12 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import { OrderSource, OrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getOrderErrorMessage, isOrderNumberUniqueViolation, toOrderError } from "@/lib/order/errors";
+import {
+  OrderDomainError,
+  getOrderErrorMessage,
+  isOrderNumberUniqueViolation,
+  toOrderError,
+} from "@/lib/order/errors";
 import { itemSubtotal, orderTotals } from "@/lib/order/pricing";
 import {
   formatOrderNumber,
@@ -82,7 +87,7 @@ export async function createPublicOrderAction(payload: {
         isSoldOut: false,
         category: { isActive: true, deletedAt: null },
       },
-      select: { id: true, name: true, price: true },
+      select: { id: true, name: true, price: true, stock: true },
     });
 
     if (menuRows.length !== menuItemIds.length) {
@@ -92,7 +97,15 @@ export async function createPublicOrderAction(payload: {
     const menuById = new Map(menuRows.map((r) => [r.id, r]));
     const orderLines = items.map((item) => {
       const menu = menuById.get(item.menuItemId);
-      if (!menu) throw new Error("Menu not found");
+      if (!menu) {
+        throw new OrderDomainError("MENU_ITEM_UNAVAILABLE");
+      }
+      if (menu.stock < item.quantity) {
+        throw new OrderDomainError(
+          "MENU_STOCK_INSUFFICIENT",
+          `Stok ${menu.name} tidak mencukupi.`
+        );
+      }
       return {
         menuItemId: menu.id,
         menuNameSnapshot: menu.name,
@@ -127,6 +140,25 @@ export async function createPublicOrderAction(payload: {
             }
 
             const orderNumber = formatOrderNumber(prefix, seq);
+
+            for (const line of orderLines) {
+              const reserved = await tx.menuItem.updateMany({
+                where: {
+                  id: line.menuItemId,
+                  tenantId,
+                  outletId,
+                  stock: { gte: line.quantity },
+                },
+                data: { stock: { decrement: line.quantity } },
+              });
+
+              if (reserved.count !== 1) {
+                throw new OrderDomainError(
+                  "MENU_STOCK_INSUFFICIENT",
+                  `Stok ${line.menuNameSnapshot} tidak mencukupi.`
+                );
+              }
+            }
 
             const order = await tx.customerOrder.create({
               data: {

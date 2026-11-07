@@ -20,7 +20,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 const tx = {
-  menuItem: { findMany: vi.fn() },
+  menuItem: { findMany: vi.fn(), updateMany: vi.fn() },
   diningTable: { findFirst: vi.fn() },
   customerOrder: { findMany: vi.fn(), create: vi.fn() },
   orderItem: { createMany: vi.fn() },
@@ -47,8 +47,8 @@ const outletRow = {
 };
 
 const menuRows = [
-  { id: "menu-1", name: "Nasi Goreng", price: 25_000 },
-  { id: "menu-2", name: "Es Teh", price: 5_000 },
+  { id: "menu-1", name: "Nasi Goreng", price: 25_000, stock: 100 },
+  { id: "menu-2", name: "Es Teh", price: 5_000, stock: 100 },
 ];
 
 function baseOrder(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -133,6 +133,7 @@ beforeEach(() => {
   );
 
   tx.menuItem.findMany.mockResolvedValue([menuRows[0]]);
+  tx.menuItem.updateMany.mockResolvedValue({ count: 1 });
   tx.diningTable.findFirst.mockResolvedValue({ id: "table-1" });
   tx.customerOrder.findMany.mockResolvedValue([]);
   tx.customerOrder.create.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
@@ -309,8 +310,69 @@ describe("createCustomerOrder - transaction validation", () => {
         isSoldOut: false,
         category: { isActive: true, deletedAt: null },
       },
-      select: { id: true, name: true, price: true },
+      select: { id: true, name: true, price: true, stock: true },
     });
+  });
+
+  it("rejects an order whose quantity exceeds the menu stock", async () => {
+    tx.menuItem.findMany.mockResolvedValue([{ ...menuRows[0], stock: 1 }]);
+
+    const error = await captureError(
+      createCustomerOrder(baseOrder({ items: [{ menuItemId: "menu-1", quantity: 2 }] }))
+    );
+
+    expect(error).toBeInstanceOf(OrderDomainError);
+    expect(error?.code).toBe("MENU_STOCK_INSUFFICIENT");
+    expect(error?.message).toBe("Stok Nasi Goreng tidak mencukupi.");
+    expect(tx.menuItem.updateMany).not.toHaveBeenCalled();
+    expect(tx.customerOrder.create).not.toHaveBeenCalled();
+    expect(tx.activityLog.create).not.toHaveBeenCalled();
+  });
+
+  it("reserves stock atomically with a guard before writing the order", async () => {
+    tx.menuItem.findMany.mockResolvedValue([menuRows[0], menuRows[1]]);
+    tx.orderItem.createMany.mockResolvedValue({ count: 2 });
+
+    await createCustomerOrder(
+      baseOrder({
+        items: [
+          { menuItemId: "menu-1", quantity: 2 },
+          { menuItemId: "menu-2", quantity: 3 },
+        ],
+      })
+    );
+
+    expect(tx.menuItem.updateMany).toHaveBeenCalledTimes(2);
+    expect(tx.menuItem.updateMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: "menu-1",
+        tenantId: "tenant-ctx",
+        outletId: "outlet-ctx",
+        stock: { gte: 2 },
+      },
+      data: { stock: { decrement: 2 } },
+    });
+    expect(tx.menuItem.updateMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: "menu-2",
+        tenantId: "tenant-ctx",
+        outletId: "outlet-ctx",
+        stock: { gte: 3 },
+      },
+      data: { stock: { decrement: 3 } },
+    });
+  });
+
+  it("maps a lost stock race to MENU_STOCK_INSUFFICIENT without writing", async () => {
+    tx.menuItem.updateMany.mockResolvedValue({ count: 0 });
+
+    const error = await captureError(createCustomerOrder(baseOrder()));
+
+    expect(error).toBeInstanceOf(OrderDomainError);
+    expect(error?.code).toBe("MENU_STOCK_INSUFFICIENT");
+    expect(error?.message).toBe("Stok Nasi Goreng tidak mencukupi.");
+    expect(tx.customerOrder.create).not.toHaveBeenCalled();
+    expect(tx.activityLog.create).not.toHaveBeenCalled();
   });
 
   it("maps a partial or unorderable menu result to MENU_ITEM_UNAVAILABLE", async () => {

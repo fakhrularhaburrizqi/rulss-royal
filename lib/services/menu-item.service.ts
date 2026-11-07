@@ -209,6 +209,7 @@ export async function createMenuItem(input: unknown): Promise<MenuItemSummary> {
           sortOrder: parsed.data.sortOrder ?? 0,
           isActive: parsed.data.isActive ?? true,
           isSoldOut: parsed.data.isSoldOut ?? false,
+          ...(parsed.data.stock !== undefined ? { stock: parsed.data.stock } : {}),
         },
       });
 
@@ -272,6 +273,7 @@ export async function updateMenuItem(input: unknown): Promise<MenuItemSummary> {
     sortOrder,
     isActive,
     isSoldOut,
+    stock,
   } = parsed.data;
 
   const context = await requireOrderContext(outletId, "menu.manage");
@@ -317,6 +319,7 @@ export async function updateMenuItem(input: unknown): Promise<MenuItemSummary> {
         ...(sortOrder !== undefined ? { sortOrder } : {}),
         ...(isActive !== undefined ? { isActive } : {}),
         ...(isSoldOut !== undefined ? { isSoldOut } : {}),
+        ...(stock !== undefined ? { stock } : {}),
         updatedAt: mutationTime,
       };
 

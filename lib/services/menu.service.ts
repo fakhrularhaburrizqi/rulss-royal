@@ -16,6 +16,8 @@ export type OrderableMenuItem = {
   name: string;
   price: number;
   sortOrder: number;
+  stock: number;
+  isSoldOut: boolean;
 };
 
 const CATEGORY_SELECT = {
@@ -30,6 +32,8 @@ const ITEM_SELECT = {
   name: true,
   price: true,
   sortOrder: true,
+  stock: true,
+  isSoldOut: true,
 } as const;
 
 export type ManagementCategory = {
@@ -52,6 +56,7 @@ export type ManagementMenuItem = {
   sortOrder: number;
   isActive: boolean;
   isSoldOut: boolean;
+  stock: number;
   deletedAt: string | null;
   updatedAt: string;
 };
@@ -76,6 +81,7 @@ const MANAGEMENT_ITEM_SELECT = {
   sortOrder: true,
   isActive: true,
   isSoldOut: true,
+  stock: true,
   deletedAt: true,
   updatedAt: true,
 } as const;
@@ -109,7 +115,6 @@ export async function listOrderableMenuItems(outletId: string): Promise<Orderabl
         outletId: context.outletId,
         isActive: true,
         deletedAt: null,
-        isSoldOut: false,
         category: {
           isActive: true,
           deletedAt: null,
@@ -175,6 +180,7 @@ export async function listMenuItemsForManagement(outletId: string): Promise<Mana
       sortOrder: row.sortOrder,
       isActive: row.isActive,
       isSoldOut: row.isSoldOut,
+      stock: row.stock,
       deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));

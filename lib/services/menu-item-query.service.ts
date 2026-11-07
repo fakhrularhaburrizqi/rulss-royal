@@ -33,6 +33,7 @@ export type ManagementMenuItemListItem = {
   sortOrder: number;
   isActive: boolean;
   isSoldOut: boolean;
+  stock: number;
   deletedAt: string | null;
   updatedAt: string;
   category: ManagementMenuItemCategory;
@@ -63,6 +64,7 @@ const MANAGEMENT_ITEM_LIST_SELECT = {
   sortOrder: true,
   isActive: true,
   isSoldOut: true,
+  stock: true,
   deletedAt: true,
   updatedAt: true,
   category: {
@@ -188,6 +190,7 @@ function mapRow(row: MenuItemListRow): ManagementMenuItemListItem {
     sortOrder: row.sortOrder,
     isActive: row.isActive,
     isSoldOut: row.isSoldOut,
+    stock: row.stock,
     deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     category: {

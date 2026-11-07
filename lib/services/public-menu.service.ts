@@ -24,6 +24,7 @@ export type PublicCatalogResult = {
     imageAlt: string | null;
     sortOrder: number;
     isSoldOut: boolean;
+    stock: number;
     updatedAt: string;
   }>;
 };
@@ -85,6 +86,7 @@ export async function getPublicCatalog(tableId: string, rawToken: string): Promi
           imageAlt: true,
           sortOrder: true,
           isSoldOut: true,
+          stock: true,
           updatedAt: true,
         },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -112,6 +114,7 @@ export async function getPublicCatalog(tableId: string, rawToken: string): Promi
         imageAlt: m.imageAlt,
         sortOrder: m.sortOrder,
         isSoldOut: m.isSoldOut,
+        stock: m.stock,
         updatedAt: m.updatedAt.toISOString(),
       })),
     };

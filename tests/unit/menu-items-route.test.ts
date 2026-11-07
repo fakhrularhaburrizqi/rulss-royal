@@ -43,6 +43,7 @@ const MOCK_RESULT = {
       sortOrder: 0,
       isActive: true,
       isSoldOut: false,
+      stock: 10,
       deletedAt: null,
       updatedAt: "2026-03-10T08:30:00.000Z",
       category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },

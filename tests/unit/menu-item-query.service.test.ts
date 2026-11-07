@@ -43,6 +43,7 @@ type RawItemRow = {
   sortOrder: number;
   isActive: boolean;
   isSoldOut: boolean;
+  stock: number;
   deletedAt: Date | null;
   updatedAt: Date;
   category: {
@@ -65,6 +66,7 @@ const itemRows = [
     sortOrder: 0,
     isActive: true,
     isSoldOut: false,
+    stock: 12,
     deletedAt: null,
     updatedAt: FROZEN_NOW,
     category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },
@@ -80,6 +82,7 @@ const itemRows = [
     sortOrder: 1,
     isActive: true,
     isSoldOut: true,
+    stock: 0,
     deletedAt: null,
     updatedAt: FROZEN_NOW,
     category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },
@@ -95,6 +98,7 @@ const itemRows = [
     sortOrder: 0,
     isActive: true,
     isSoldOut: false,
+    stock: 3,
     deletedAt: ARCHIVED_AT,
     updatedAt: FROZEN_NOW,
     category: { id: "cat-2", name: "Minuman", isActive: true, deletedAt: null },
@@ -110,6 +114,7 @@ const itemRows = [
     sortOrder: 1,
     isActive: false,
     isSoldOut: false,
+    stock: 99,
     deletedAt: null,
     updatedAt: FROZEN_NOW,
     category: { id: "cat-2", name: "Minuman Lama", isActive: false, deletedAt: null },
@@ -424,7 +429,7 @@ describe("listMenuItemsPaginated - query shape", () => {
     expect(args.take).toBe(11);
   });
 
-  it("selects the 12 management fields plus the nested category projection", async () => {
+  it("selects the 13 management fields plus the nested category projection", async () => {
     await listMenuItemsPaginated(baseOptions());
 
     const args = firstFindManyArgs();
@@ -439,6 +444,7 @@ describe("listMenuItemsPaginated - query shape", () => {
       sortOrder: true,
       isActive: true,
       isSoldOut: true,
+      stock: true,
       deletedAt: true,
       updatedAt: true,
       category: { select: { id: true, name: true, isActive: true, deletedAt: true } },
@@ -511,7 +517,7 @@ describe("listMenuItemsPaginated - pagination envelope", () => {
 });
 
 describe("listMenuItemsPaginated - DTO mapping", () => {
-  it("maps all 12 fields plus nested category with ISO dates", async () => {
+  it("maps all 13 fields plus nested category with ISO dates", async () => {
     mockedFindMany.mockResolvedValue([itemRows[0]]);
 
     const result = await listMenuItemsPaginated(baseOptions());
@@ -528,6 +534,7 @@ describe("listMenuItemsPaginated - DTO mapping", () => {
       sortOrder: 0,
       isActive: true,
       isSoldOut: false,
+      stock: 12,
       deletedAt: null,
       updatedAt: "2026-03-10T08:30:00.000Z",
       category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },

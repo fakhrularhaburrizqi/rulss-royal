@@ -172,7 +172,6 @@ describe("listOrderableMenuItems", () => {
       outletId: "outlet-ctx",
       isActive: true,
       deletedAt: null,
-      isSoldOut: false,
       category: { isActive: true, deletedAt: null },
     });
     expect(args.where.tenantId).toBe(contextResult.actor.tenantId);
@@ -180,12 +179,13 @@ describe("listOrderableMenuItems", () => {
     expect(args.where.outletId).not.toBe("outlet-raw");
   });
 
-  it("requires an active, non-deleted category relation", async () => {
+  it("requires an active, non-deleted category relation without filtering sold-out or zero-stock items", async () => {
     await listOrderableMenuItems("outlet-1");
 
     const args = firstFindManyArgs(mockedItemFindMany);
     expect(args.where.category).toEqual({ isActive: true, deletedAt: null });
-    expect(args.where.isSoldOut).toBe(false);
+    expect(args.where).not.toHaveProperty("isSoldOut");
+    expect(args.where).not.toHaveProperty("stock");
   });
 
   it("selects only DTO fields with deterministic ordering", async () => {
@@ -198,6 +198,8 @@ describe("listOrderableMenuItems", () => {
       name: true,
       price: true,
       sortOrder: true,
+      stock: true,
+      isSoldOut: true,
     });
     expect(args.orderBy).toEqual([
       { categoryId: "asc" },
@@ -209,8 +211,24 @@ describe("listOrderableMenuItems", () => {
 
   it("forwards returned rows as the DTO result", async () => {
     const rows = [
-      { id: "item-1", categoryId: "cat-1", name: "Nasi Goreng", price: 25_000, sortOrder: 1 },
-      { id: "item-2", categoryId: "cat-1", name: "Es Teh", price: 5_000, sortOrder: 2 },
+      {
+        id: "item-1",
+        categoryId: "cat-1",
+        name: "Nasi Goreng",
+        price: 25_000,
+        sortOrder: 1,
+        stock: 12,
+        isSoldOut: false,
+      },
+      {
+        id: "item-2",
+        categoryId: "cat-1",
+        name: "Es Teh",
+        price: 5_000,
+        sortOrder: 2,
+        stock: 0,
+        isSoldOut: true,
+      },
     ];
     mockedItemFindMany.mockResolvedValue(rows);
 
@@ -493,6 +511,7 @@ describe("listMenuItemsForManagement", () => {
       sortOrder: true,
       isActive: true,
       isSoldOut: true,
+      stock: true,
       deletedAt: true,
       updatedAt: true,
     });
@@ -517,6 +536,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 1,
         isActive: true,
         isSoldOut: false,
+        stock: 20,
         deletedAt: null,
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -531,6 +551,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 2,
         isActive: false,
         isSoldOut: false,
+        stock: 0,
         deletedAt: null,
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -545,6 +566,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 3,
         isActive: true,
         isSoldOut: true,
+        stock: 5,
         deletedAt: null,
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -559,6 +581,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 4,
         isActive: true,
         isSoldOut: false,
+        stock: 8,
         deletedAt: new Date("2026-09-01T08:30:00.000Z"),
         updatedAt: new Date("2026-09-01T08:30:00.000Z"),
       },
@@ -586,6 +609,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 1,
         isActive: true,
         isSoldOut: false,
+        stock: 20,
         deletedAt: null,
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -600,6 +624,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 2,
         isActive: true,
         isSoldOut: false,
+        stock: 7,
         deletedAt: null,
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -628,6 +653,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 1,
         isActive: true,
         isSoldOut: false,
+        stock: 6,
         deletedAt: new Date("2026-09-01T08:30:00.000Z"),
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },
@@ -693,6 +719,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 1,
         isActive: true,
         isSoldOut: false,
+        stock: 4,
         deletedAt: null,
         updatedAt: new Date("not-a-date"),
       },
@@ -719,6 +746,7 @@ describe("listMenuItemsForManagement", () => {
         sortOrder: 1,
         isActive: true,
         isSoldOut: false,
+        stock: 4,
         deletedAt: new Date("not-a-date"),
         updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       },

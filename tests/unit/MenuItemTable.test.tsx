@@ -44,6 +44,7 @@ function makeItem(
     sortOrder: 0,
     isActive: true,
     isSoldOut: false,
+    stock: 10,
     deletedAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
     category: { id: "cat-1", name: "Makanan", isActive: true, deletedAt: null },
@@ -108,12 +109,30 @@ describe("MenuItemTable DOM", () => {
     expect(select).not.toBeDisabled();
   });
 
-  it("renders the five columns: Nama, Kategori, Harga, Status item, Sold-out", async () => {
+  it("renders the six columns: Nama, Kategori, Harga, Stok, Status item, Sold-out", async () => {
     renderWithProvider(<MenuItemTable authScope={authScope} outletId={outletId} />);
     await waitFor(() => expect(screen.getByText("Nasi Goreng")).toBeInTheDocument());
 
     const headers = screen.getAllByRole("columnheader");
-    expect(headers.map((h) => h.textContent)).toEqual(["Nama", "Kategori", "Harga", "Status item", "Sold-out"]);
+    expect(headers.map((h) => h.textContent)).toEqual([
+      "Nama",
+      "Kategori",
+      "Harga",
+      "Stok",
+      "Status item",
+      "Sold-out",
+    ]);
+  });
+
+  it("shows the remaining stock for each item", async () => {
+    renderWithProvider(<MenuItemTable authScope={authScope} outletId={outletId} />);
+    await waitFor(() => expect(screen.getByText("Nasi Goreng")).toBeInTheDocument());
+
+    const freshRow = screen.getByText("Nasi Goreng").closest("tr");
+    expect(within(freshRow as HTMLElement).getByText("10")).toBeInTheDocument();
+
+    const soldOutRow = screen.getByText("Es Teh").closest("tr");
+    expect(within(soldOutRow as HTMLElement).getByText("10")).toBeInTheDocument();
   });
 
   it("formats integer prices with the local rupiah formatter", async () => {
@@ -173,13 +192,13 @@ describe("MenuItemTable DOM", () => {
     expect(screen.getByLabelText("Cari menu")).not.toBeDisabled();
   });
 
-  it("shows empty state with five-column span", async () => {
+  it("shows empty state with six-column span", async () => {
     mockedFetchMenuItems.mockResolvedValue(mockEmptyData);
 
     renderWithProvider(<MenuItemTable authScope={authScope} outletId={outletId} />);
 
     await waitFor(() => expect(screen.getByText("Tidak ada menu ditemukan")).toBeInTheDocument());
-    expect(screen.getByText("Tidak ada menu ditemukan").closest("td")).toHaveAttribute("colspan", "5");
+    expect(screen.getByText("Tidak ada menu ditemukan").closest("td")).toHaveAttribute("colspan", "6");
     expect(screen.getByText("Tidak ada data")).toBeInTheDocument();
   });
 
