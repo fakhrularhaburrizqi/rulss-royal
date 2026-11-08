@@ -1,5 +1,7 @@
 import type { ReportExportRow } from "@/lib/dashboard/sales-report";
 
+const pad2 = (value: number): string => String(value).padStart(2, "0");
+
 const STATUS_LABELS: Readonly<Record<string, string>> = {
   RECEIVED: "Diterima",
   PREPARING: "Diproses",
@@ -31,22 +33,25 @@ const HEADER = [
   "Total Pesanan",
 ];
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Jakarta",
-  year: "numeric",
-  month: "2-digit",
+const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
+  timeZone: "Asia/Jakarta",
 });
 
 function formatJakartaDateTime(value: Date): string {
   const parts = dateTimeFormatter.formatToParts(value);
   const byType = new Map(parts.map((part) => [part.type, part.value]));
-  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")} ${byType.get(
-    "hour"
-  )}:${byType.get("minute")}`;
+  const day = pad2(Number(byType.get("day")));
+  const month = pad2(Number(byType.get("month")));
+  const year = byType.get("year");
+  const hour = pad2(Number(byType.get("hour")));
+  const minute = pad2(Number(byType.get("minute")));
+  return `${day}/${month}/${year} ${hour}:${minute}`;
 }
 
 function csvCell(value: string | number | null | undefined): string {
@@ -54,14 +59,14 @@ function csvCell(value: string | number | null | undefined): string {
   if (text === "") {
     return "";
   }
-  if (/[",\r\n]/.test(text)) {
+  if (/[",;\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;
 }
 
 function csvRow(cells: Array<string | number | null | undefined>): string {
-  return cells.map(csvCell).join(",");
+  return cells.map(csvCell).join(";");
 }
 
 export function buildSalesReportCsv(rows: readonly ReportExportRow[]): string {
@@ -81,7 +86,9 @@ export function buildSalesReportCsv(rows: readonly ReportExportRow[]): string {
     const orderTotals = [row.subtotal, row.taxAmount, row.serviceAmount, row.total];
 
     if (row.items.length === 0) {
-      lines.push(csvRow([...orderCells, "", "", "", "", ...orderTotals]));
+      lines.push(
+        csvRow([...orderCells, "", "", "", "", ...orderTotals])
+      );
     } else {
       for (const item of row.items) {
         lines.push(
