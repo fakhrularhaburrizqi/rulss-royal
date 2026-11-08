@@ -19,6 +19,7 @@ const READY_ROUTES = new Set([
   "/dashboard/pesanan",
   "/dashboard/kasir",
   "/dashboard/kds",
+  "/dashboard/laporan",
 ]);
 
 export function DashboardNavigation({ resolution, currentPath }: DashboardNavigationProps) {
@@ -27,12 +28,48 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
 
   const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", requiredPermission: undefined, isAvailable: true },
-    { href: "/dashboard/kategori", label: "Kategori", requiredPermission: "canViewCatalog", isAvailable: false },
-    { href: "/dashboard/menu", label: "Menu", requiredPermission: "canViewCatalog", isAvailable: false },
-    { href: "/dashboard/meja", label: "Meja", requiredPermission: "canViewTables", isAvailable: false },
-    { href: "/dashboard/pesanan", label: "Pesanan", requiredPermission: "canViewOrders", isAvailable: false },
-    { href: "/dashboard/kasir", label: "Kasir", requiredPermission: "canViewOrders", isAvailable: false },
-    { href: "/dashboard/kds", label: "KDS Dapur", requiredPermission: "canViewOrders", isAvailable: false },
+    {
+      href: "/dashboard/laporan",
+      label: "Laporan",
+      requiredPermission: "canViewOrders",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/kategori",
+      label: "Kategori",
+      requiredPermission: "canViewCatalog",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/menu",
+      label: "Menu",
+      requiredPermission: "canViewCatalog",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/meja",
+      label: "Meja",
+      requiredPermission: "canViewTables",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/pesanan",
+      label: "Pesanan",
+      requiredPermission: "canViewOrders",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/kasir",
+      label: "Kasir",
+      requiredPermission: "canViewOrders",
+      isAvailable: false,
+    },
+    {
+      href: "/dashboard/kds",
+      label: "KDS Dapur",
+      requiredPermission: "canViewOrders",
+      isAvailable: false,
+    },
   ];
 
   const filteredItems = navItems.map((item) => {
@@ -53,7 +90,8 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
             return null;
           }
 
-          const isComingSoon = item.requiredPermission !== undefined && !READY_ROUTES.has(item.href);
+          const isComingSoon =
+            item.requiredPermission !== undefined && !READY_ROUTES.has(item.href);
 
           if (isComingSoon) {
             return (
@@ -72,9 +110,7 @@ export function DashboardNavigation({ resolution, currentPath }: DashboardNaviga
           }
 
           const outletId = resolution?.kind === "selected" ? resolution?.outlet?.id : undefined;
-          const href = outletId
-            ? `${item.href}?outlet=${outletId}`
-            : item.href;
+          const href = outletId ? `${item.href}?outlet=${outletId}` : item.href;
 
           return (
             <li key={item.href}>

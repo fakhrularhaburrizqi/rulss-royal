@@ -12,7 +12,11 @@ export function buildHrefWithOutlet(baseHref: string, outletId?: string): string
   return url.pathname + url.search;
 }
 
-export function buildHrefWithOutletPreserving(baseHref: string, outletId?: string, existingParams?: Record<string, string>): string {
+export function buildHrefWithOutletPreserving(
+  baseHref: string,
+  outletId?: string,
+  existingParams?: Record<string, string>
+): string {
   const url = new URL(baseHref, "http://localhost");
   if (outletId) {
     url.searchParams.set("outlet", outletId);
@@ -27,7 +31,9 @@ export function buildHrefWithOutletPreserving(baseHref: string, outletId?: strin
   return url.pathname + url.search;
 }
 
-export function getActiveOutletFromParams(params: Record<string, string | string[] | undefined>): string | null {
+export function getActiveOutletFromParams(
+  params: Record<string, string | string[] | undefined>
+): string | null {
   const raw = params.outlet;
   if (Array.isArray(raw)) return null;
   if (typeof raw === "string") {
@@ -49,7 +55,28 @@ export function isActiveRoute(currentPath: string, href: string, exact = false):
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", requiredPermission: undefined, isAvailable: true },
-  { href: "/dashboard/kategori", label: "Kategori", requiredPermission: "canViewCatalog", isAvailable: false },
-  { href: "/dashboard/menu", label: "Menu", requiredPermission: "canViewCatalog", isAvailable: false },
-  { href: "/dashboard/meja", label: "Meja", requiredPermission: "canViewTables", isAvailable: false },
+  {
+    href: "/dashboard/kategori",
+    label: "Kategori",
+    requiredPermission: "canViewCatalog",
+    isAvailable: false,
+  },
+  {
+    href: "/dashboard/menu",
+    label: "Menu",
+    requiredPermission: "canViewCatalog",
+    isAvailable: false,
+  },
+  {
+    href: "/dashboard/meja",
+    label: "Meja",
+    requiredPermission: "canViewTables",
+    isAvailable: false,
+  },
+  {
+    href: "/dashboard/laporan",
+    label: "Laporan",
+    requiredPermission: "canViewOrders",
+    isAvailable: false,
+  },
 ];

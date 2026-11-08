@@ -46,7 +46,10 @@ describe("lib/dashboard/navigation", () => {
 
   describe("buildHrefWithOutletPreserving", () => {
     it("preserves non-outlet params and sets outlet", () => {
-      const result = buildHrefWithOutletPreserving("/dashboard/kategori", "outlet-1", { page: "2", sort: "name" });
+      const result = buildHrefWithOutletPreserving("/dashboard/kategori", "outlet-1", {
+        page: "2",
+        sort: "name",
+      });
       expect(result).toContain("/dashboard/kategori?");
       expect(result).toContain("page=2");
       expect(result).toContain("sort=name");
@@ -54,7 +57,10 @@ describe("lib/dashboard/navigation", () => {
     });
 
     it("replaces existing outlet param from existingParams", () => {
-      const result = buildHrefWithOutletPreserving("/dashboard/kategori", "new", { outlet: "old", page: "2" });
+      const result = buildHrefWithOutletPreserving("/dashboard/kategori", "new", {
+        outlet: "old",
+        page: "2",
+      });
       expect(result).toContain("/dashboard/kategori?");
       expect(result).toContain("page=2");
       expect(result).toContain("outlet=new");
@@ -62,9 +68,9 @@ describe("lib/dashboard/navigation", () => {
     });
 
     it("does not add empty outlet", () => {
-      expect(
-        buildHrefWithOutletPreserving("/dashboard/kategori", "", { page: "2" })
-      ).toBe("/dashboard/kategori?page=2");
+      expect(buildHrefWithOutletPreserving("/dashboard/kategori", "", { page: "2" })).toBe(
+        "/dashboard/kategori?page=2"
+      );
     });
   });
 
@@ -110,7 +116,9 @@ describe("lib/dashboard/navigation", () => {
     it("matches prefix for child routes when exact=false", () => {
       expect(isActiveRoute("/dashboard/kategori", "/dashboard/kategori", false)).toBe(true);
       expect(isActiveRoute("/dashboard/kategori/123", "/dashboard/kategori", false)).toBe(true);
-      expect(isActiveRoute("/dashboard/kategori/123/edit", "/dashboard/kategori", false)).toBe(true);
+      expect(isActiveRoute("/dashboard/kategori/123/edit", "/dashboard/kategori", false)).toBe(
+        true
+      );
     });
 
     it("does not match similar prefix", () => {
@@ -124,8 +132,8 @@ describe("lib/dashboard/navigation", () => {
   });
 
   describe("NAV_ITEMS", () => {
-    it("contains exactly 4 items", () => {
-      expect(NAV_ITEMS).toHaveLength(4);
+    it("contains exactly 5 items", () => {
+      expect(NAV_ITEMS).toHaveLength(5);
     });
 
     it("first item is Dashboard with no required permission", () => {
@@ -160,6 +168,15 @@ describe("lib/dashboard/navigation", () => {
         href: "/dashboard/meja",
         label: "Meja",
         requiredPermission: "canViewTables",
+        isAvailable: false,
+      });
+    });
+
+    it("Laporan requires canViewOrders", () => {
+      expect(NAV_ITEMS[4]).toEqual({
+        href: "/dashboard/laporan",
+        label: "Laporan",
+        requiredPermission: "canViewOrders",
         isAvailable: false,
       });
     });

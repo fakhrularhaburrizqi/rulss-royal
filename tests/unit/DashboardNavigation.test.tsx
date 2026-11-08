@@ -16,6 +16,7 @@ function selectedResolution(capabilities: {
   canManageCatalog: boolean;
   canViewTables: boolean;
   canManageTables: boolean;
+  canViewOrders?: boolean;
 }): DashboardContextResult {
   return { kind: "selected", outlet, outlets: [outlet], capabilities };
 }
@@ -30,7 +31,10 @@ const fullCapabilities = {
 describe("DashboardNavigation menu readiness", () => {
   it("renders Menu, Kategori, and Meja as live outlet links while authorized", () => {
     render(
-      <DashboardNavigation resolution={selectedResolution(fullCapabilities)} currentPath="/dashboard" />
+      <DashboardNavigation
+        resolution={selectedResolution(fullCapabilities)}
+        currentPath="/dashboard"
+      />
     );
 
     const menuLink = screen.getByRole("link", { name: "Menu" });
@@ -47,7 +51,10 @@ describe("DashboardNavigation menu readiness", () => {
 
   it("keeps Kategori, Menu, and Meja links free of the coming-soon badge", () => {
     render(
-      <DashboardNavigation resolution={selectedResolution(fullCapabilities)} currentPath="/dashboard" />
+      <DashboardNavigation
+        resolution={selectedResolution(fullCapabilities)}
+        currentPath="/dashboard"
+      />
     );
 
     const menuLi = screen.getByRole("link", { name: "Menu" }).closest("li") as HTMLElement;
@@ -85,6 +92,32 @@ describe("DashboardNavigation menu readiness", () => {
     expect(screen.getByRole("link", { name: "Menu" })).toBeInTheDocument();
   });
 
+  it("renders Laporan as a live outlet link when canViewOrders is true", () => {
+    render(
+      <DashboardNavigation
+        resolution={selectedResolution({ ...fullCapabilities, canViewOrders: true })}
+        currentPath="/dashboard"
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Laporan" })).toHaveAttribute(
+      "href",
+      "/dashboard/laporan?outlet=outlet-1"
+    );
+    expect(screen.queryByText("Segera tersedia")).not.toBeInTheDocument();
+  });
+
+  it("hides Laporan when canViewOrders is false", () => {
+    render(
+      <DashboardNavigation
+        resolution={selectedResolution({ ...fullCapabilities, canViewOrders: false })}
+        currentPath="/dashboard"
+      />
+    );
+
+    expect(screen.queryByRole("link", { name: "Laporan" })).not.toBeInTheDocument();
+  });
+
   it("renders only Dashboard outside a selected context", () => {
     render(
       <DashboardNavigation
@@ -102,7 +135,10 @@ describe("DashboardNavigation menu readiness", () => {
 
   it("marks the Menu link with aria-current on the menu page", () => {
     render(
-      <DashboardNavigation resolution={selectedResolution(fullCapabilities)} currentPath="/dashboard/menu" />
+      <DashboardNavigation
+        resolution={selectedResolution(fullCapabilities)}
+        currentPath="/dashboard/menu"
+      />
     );
 
     expect(screen.getByRole("link", { name: "Menu" })).toHaveAttribute("aria-current", "page");
